@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.gmjregister.jc.mapper.GmjMapper">
+    
+    <select id="getTotal" resultType="int">
+        SELECT COUNT(*) FROM STORE
+    </select>
+    <select id="gmjdrno">
+    	select max(nvl(store_no,0))+1 from store
+    </select>
+    
+    <select id="list" resultType="kr.or.ddit.vo.StoreVO">
+    	select * from store
+    	where 1=1
+    	<if test="keyword!=null and keyword!=''">
+		AND (
+		    store_nm LIKE '%' || #{keyword} || '%' 
+		    )
+	    </if>
+	    ORDER BY 
+            STORE_NO ASC
+    </select>
+    
+
+    <select id="searchGmj" parameterType="string" resultType="kr.or.ddit.vo.StoreVO">
+        SELECT *
+        FROM 
+            STORE
+            where 1=1
+        <if test="keyword!=null and keyword!=''">
+            AND STORE_NM LIKE '%' || #{keyword} || '%'
+        </if>
+        ORDER BY 
+            STORE_NO ASC
+    </select>
+    
+    <!-- 가맹점 삭제 -->
+    <update id="deleteGmj" parameterType="java.util.List">
+        UPDATE STORE
+        SET store_status='N'
+        WHERE STORE_NO IN
+        <foreach collection="list" item="storeNo" open="(" separator="," close=")">
+            #{storeNo}
+        </foreach>
+    </update>
+    
+    <!-- 가맹점 상세 정보 조회 -->
+    <select id="selectGmjDetail" parameterType="string" resultType="kr.or.ddit.vo.StoreVO">
+        SELECT 
+            STORE_NO,
+            STORE_LAT,
+            STORE_LOT,
+            STORE_ADDR1,
+            STORE_ZIP,
+            STORE_NM,
+            STORE_ADDR2
+        FROM 
+            TEAM3_202407F.STORE
+        WHERE 
+            STORE_NO = #{storeNo}
+    </select>
+    
+    <!-- 가맹점 등록 -->
+    <insert id="insertGmj" parameterType="hashMap">
+        INSERT INTO TEAM3_202407F.STORE (
+            STORE_NO,
+            STORE_ADDR1,
+            STORE_ZIP,
+            STORE_NM,
+            STORE_ADDR2,
+            STORE_OPEN_DATE,
+            STORE_STATUS
+        ) VALUES (
+            (SELECT NVL(MAX(STORE_NO), 0) + 1 FROM TEAM3_202407F.STORE),
+            #{storeAddr1},
+            #{storeZip},
+            #{storeNm},
+            #{storeAddr2},
+            #{storeOpenDate},
+            'Y'
+        )
+    </insert>
+    
+    <update id="updateGmj" parameterType="hashMap">
+        UPDATE STORE
+        SET 
+            STORE_ADDR1 = #{storeAddr1},
+            STORE_ZIP = #{storeZip},
+            STORE_NM = #{storeNm},
+            STORE_ADDR2 = #{storeAddr2},
+            store_open_date = #{storeOpenDate}
+        WHERE 
+            STORE_NO = #{storeNo}
+    </update>
+    
+    <select id="getStoreByNo" parameterType="int" resultType="kr.or.ddit.vo.StoreVO">
+    	select * from store
+    	where store_no=#{storeNo}
+    </select>
+    
+    <select id="bestGMJ" resultType="kr.or.ddit.vo.StoreVO">
+    <![CDATA[
+   select * from 
+ ( SELECT 
+	    s.store_nm,
+	    s.store_no,
+	    s.store_addr1, 
+	    s.store_addr2, 
+	    s.store_zip,
+	    s.store_open_date,
+	    s.store_status,
+	    EXTRACT(YEAR FROM SYSDATE) as year,
+	    EXTRACT(MONTH FROM SYSDATE) as month,
+	    NVL(total, 0) as total,
+	    NVL(monthlyAvg, 0) as monthlyAvg,
+	    ROW_NUMBER() OVER(ORDER BY NVL(monthlyAvg, 0) DESC) as rank
+	FROM store s
+	LEFT JOIN (
+	    SELECT 
+	        s.store_no,
+	        SUM(store_order_amount * store_order_price) as total,
+	        AVG(store_order_amount * store_order_price) as monthlyAvg
+	    FROM store s
+	    LEFT JOIN store_order so ON s.store_no = so.store_no
+	    LEFT JOIN store_order_detail sd ON so.store_order_no = sd.store_order_no
+	    WHERE so.store_order_status = 1
+	    AND EXTRACT(YEAR FROM store_order_date) = EXTRACT(YEAR FROM SYSDATE)
+	    AND EXTRACT(MONTH FROM store_order_date) = EXTRACT(MONTH FROM SYSDATE)
+	    GROUP BY s.store_no
+	) h ON s.store_no = h.store_no
+	where s.store_status='Y'
+	ORDER BY monthlyAvg DESC, store_no )
+    where rank <=5]]>
+    
+    </select>
+    
+    
+    <select id="budgetfordetail" parameterType="int" resultType="kr.or.ddit.vo.StoreVO">
+   SELECT SUM(store_order_amount * store_order_price) as total
+	FROM store s
+	LEFT JOIN store_order so ON s.store_no = so.store_no
+	LEFT JOIN store_order_detail sd ON so.store_order_no = sd.store_order_no
+	WHERE so.store_order_status = 1
+	 and to_char( so.store_order_date,'YYYY-MM')=to_char( sysdate,'YYYY-MM')
+	and s.store_no=#{storeNo}
+    </select>
+    
+</mapper>

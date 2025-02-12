@@ -1,0 +1,247 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"%>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login</title>
+
+
+
+<link rel="shortcut icon" href="/dist/assets/compiled/svg/favicon.svg" type="image/x-icon">
+<link rel="shortcut icon"
+	href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACEAAAAiCAYAAADRcLDBAAAEs2lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS41LjAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6ZXhpZj0iaHR0cDovL25zLmFkb2JlLmNvbS9leGlmLzEuMC8iCiAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgZXhpZjpQaXhlbFhEaW1lbnNpb249IjMzIgogICBleGlmOlBpeGVsWURpbWVuc2lvbj0iMzQiCiAgIGV4aWY6Q29sb3JTcGFjZT0iMSIKICAgdGlmZjpJbWFnZVdpZHRoPSIzMyIKICAgdGlmZjpJbWFnZUxlbmd0aD0iMzQiCiAgIHRpZmY6UmVzb2x1dGlvblVuaXQ9IjIiCiAgIHRpZmY6WFJlc29sdXRpb249Ijk2LjAiCiAgIHRpZmY6WVJlc29sdXRpb249Ijk2LjAiCiAgIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiCiAgIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSIKICAgeG1wOk1vZGlmeURhdGU9IjIwMjItMDMtMzFUMTA6NTA6MjMrMDI6MDAiCiAgIHhtcDpNZXRhZGF0YURhdGU9IjIwMjItMDMtMzFUMTA6NTA6MjMrMDI6MDAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJwcm9kdWNlZCIKICAgICAgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWZmaW5pdHkgRGVzaWduZXIgMS4xMC4xIgogICAgICBzdEV2dDp3aGVuPSIyMDIyLTAzLTMxVDEwOjUwOjIzKzAyOjAwIi8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+Cjw/eHBhY2tldCBlbmQ9InIiPz5V57uAAAABgmlDQ1BzUkdCIElFQzYxOTY2LTIuMQAAKJF1kc8rRFEUxz9maORHo1hYKC9hISNGTWwsRn4VFmOUX5uZZ36oeTOv954kW2WrKLHxa8FfwFZZK0WkZClrYoOe87ypmWTO7dzzud97z+nec8ETzaiaWd4NWtYyIiNhZWZ2TvE946WZSjqoj6mmPjE1HKWkfdxR5sSbgFOr9Ll/rXoxYapQVik8oOqGJTwqPL5i6Q5vCzeo6dii8KlwpyEXFL519LjLLw6nXP5y2IhGBsFTJ6ykijhexGra0ITl5bRqmWU1fx/nJTWJ7PSUxBbxJkwijBBGYYwhBgnRQ7/MIQIE6ZIVJfK7f/MnyUmuKrPOKgZLpEhj0SnqslRPSEyKnpCRYdXp/9++msneoFu9JgwVT7b91ga+LfjetO3PQ9v+PgLvI1xkC/m5A+h7F32zoLXug38dzi4LWnwHzjeg8UGPGbFfySvuSSbh9QRqZ6H+Gqrm3Z7l9zm+h+iafNUV7O5Bu5z3L/wAdthn7QIme0YAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAJTSURBVFiF7Zi9axRBGIefEw2IdxFBRQsLWUTBaywSK4ubdSGVIY1Y6HZql8ZKCGIqwX/AYLmCgVQKfiDn7jZeEQMWfsSAHAiKqPiB5mIgELWYOW5vzc3O7niHhT/YZvY37/swM/vOzJbIqVq9uQ04CYwCI8AhYAlYAB4Dc7HnrOSJWcoJcBS4ARzQ2F4BZ2LPmTeNuykHwEWgkQGAet9QfiMZjUSt3hwD7psGTWgs9pwH1hC1enMYeA7sKwDxBqjGnvNdZzKZjqmCAKh+U1kmEwi3IEBbIsugnY5avTkEtIAtFhBrQCX2nLVehqyRqFoCAAwBh3WGLAhbgCRIYYinwLolwLqKUwwi9pxV4KUlxKKKUwxC6ZElRCPLYAJxGfhSEOCz6m8HEXvOB2CyIMSk6m8HoXQTmMkJcA2YNTHm3congOvATo3tE3A29pxbpnFzQSiQPcB55IFmFNgFfEQeahaAGZMpsIJIAZWAHcDX2HN+2cT6r39GxmvC9aPNwH5gO1BOPFuBVWAZue0vA9+A12EgjPadnhCuH1WAE8ivYAQ4ohKaagV4gvxi5oG7YSA2vApsCOH60WngKrA3R9IsvQUuhIGY00K4flQG7gHH/mLytB4C42EgfrQb0mV7us8AAMeBS8mGNMR4nwHamtBB7B4QRNdaS0M8GxDEog7iyoAguvJ0QYSBuAOcAt71Kfl7wA8DcTvZ2KtOlJEr+ByyQtqqhTyHTIeB+ONeqi3brh+VgIN0fohUgWGggizZFTplu12yW8iy/YLOGWMpDMTPXnl+Az9vj2HERYqPAAAAAElFTkSuQmCC"
+	type="image/png">
+<link rel="stylesheet" href="/dist/assets/compiled/css/app.css">
+<link rel="stylesheet" href="/dist/assets/compiled/css/app-dark.css">
+<link rel="stylesheet" href="/dist/assets/compiled/css/auth.css">
+</head>
+<style>
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: #fff; /* 흰 배경 */
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+}
+
+.header {
+    position: absolute;
+    top: 20px; /* 위쪽 여백 */
+    left: 20px; /* 왼쪽 여백 */
+    display: flex;
+    align-items: center;
+    gap: 10px; /* 로고와 사이트명 간 간격 */
+}
+
+.logo {
+    width: 100px; /* 로고 크기 */
+    height: auto; /* 비율 유지 */
+    padding-right: -10;
+}
+
+.header .site-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4F200D;
+}
+
+section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: auto; /* 화면 높이 */
+    width: 100%;
+    position: relative;
+    padding: 10px 0;
+}
+
+.signup-container {
+    text-align: left;
+    width: 100%;
+    max-width: 400px; /* 폼 최대 너비 */
+    padding: 0 20px;
+/*     box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15); */
+/*     border-radius: 4px; */
+}
+
+.signup-container h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    font-weight: bold;
+    margin-left:-25;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #333;
+    font-weight: bold;
+}
+
+.input-field{
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.input-field-half{
+    width: 50%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+/* 설명 문구 스타일 */
+.field-description {
+    font-size: 0.8rem; /* 작고 읽기 쉬운 크기 */
+    color: #6c757d; /* 약간 어두운 회색 */
+    margin-top: 5px; /* 위 요소와 간격 */
+    line-height: 1.4; /* 줄 간격 */
+}
+
+</style>
+
+<body>
+<section class="center-page vh-100 d-flex flex-column align-items-center justify-content-center">
+   
+<div class="signup-container">
+	 <div class="signup-header">
+    	<a href="/main">
+        	<img src="/upload/logo.png" alt="Logo" class="logo">
+        </a>
+        <h1>로그인</h1>
+       </div>
+
+	<form action="/login" method="POST">
+		<div class="form-group position-relative has-icon-left mb-4">
+			<input type="text" class="form-control form-control-xl" name="username" value="" placeholder="아이디" required>
+			<div class="form-control-icon">
+				<i class="bi bi-person"></i>
+			</div>
+		</div>
+		<div class="form-group position-relative has-icon-left mb-4">
+			<input type="password" class="form-control form-control-xl" name ="password" value="" placeholder="비밀번호" required>
+			<div class="form-control-icon">
+				<i class="bi bi-shield-lock"></i>
+			</div>
+		</div>
+		<div class="form-check form-check-lg d-flex align-items-end">
+		    <input class="form-check-input me-2" type="radio" name="login" value="sys" id="sys">
+		    <label class="form-check-label text-gray-600" for="sys">시스템관리자</label>
+		</div>
+		<div class="form-check form-check-lg d-flex align-items-end">
+		    <input class="form-check-input me-2" type="radio" name="login" value="gmj" id="gmj">
+		    <label class="form-check-label text-gray-600" for="gmj">가맹점주</label>
+		</div>
+		<div class="form-check form-check-lg d-flex align-items-end">
+		    <input class="form-check-input me-2" type="radio" name="login" value="jj" id="jj">
+		    <label class="form-check-label text-gray-600" for="jj">재정/회계</label>
+		</div>
+		<div class="form-check form-check-lg d-flex align-items-end">
+		    <input class="form-check-input me-2" type="radio" name="login" value="gy" id="gy">
+		    <label class="form-check-label text-gray-600" for="gy">경영</label>
+		</div>
+		<div class="form-check form-check-lg d-flex align-items-end">
+		    <input class="form-check-input me-2" type="radio" name="login" value="mr" id="mr">
+		    <label class="form-check-label text-gray-600" for="mr">물류</label>
+		</div>
+		<div class="form-check form-check-lg d-flex align-items-end">
+		    <input class="form-check-input me-2" type="radio" name="login" value="jr" id="jr">
+		    <label class="form-check-label text-gray-600" for="jr">전략/기획</label>
+		</div>
+		<div class="form-check form-check-lg d-flex align-items-end">
+		    <input class="form-check-input me-2" type="radio" name="login" value="is" id="is">
+		    <label class="form-check-label text-gray-600" for="is">인사/행정</label>
+		</div>
+
+		<button class="btn-login">로그인</button>
+	</form>
+	<div class="text-center mt-5 text-lg fs-4">
+		<div style="display: flex; align-items: center;">
+			<p class="field-description">
+				<a class="font-bold" href="/findId" style="display: inline; margin-right: 10px;">아이디 찾기</a>
+			</p>
+			<p class="field-description">
+				<a class="font-bold" href="/findPassword" style="display: inline;">비밀번호 찾기</a>
+			</p>
+		</div>
+		<p class="field-description">
+			아직 회원이 아니신가요?
+			<a href="/signup" class="font-bold">회원가입</a>
+		</p>
+		
+	</div>
+		</div>
+			</div>
+		<!-- Footer -->
+	    <div class="footer">
+	        <%@ include file="../include/footer.jsp"%>
+	    </div>
+		</div>
+	</div>
+	</section>
+</body>
+</html>
+
+
+<script>
+const loginData = {
+    sys: {
+        username: 'a001',
+        password: 'aaaa'
+    },
+    gmj: {
+        username: 'gmj001',
+        password: 'aaaa'
+    },
+    gmjjw: {
+        username: 'gmjjw',
+        password: 'aaaa'
+    },
+    jj: {
+        username: 'j001',
+        password: 'aaaa'
+    },
+    gy: {
+        username: 'a555',
+        password: 'aaaa'
+    },
+    mr: {
+        username: 'e7e',
+        password: 'aaaa'
+    },
+    jr: {
+        username: 'asdf432',
+        password: 'aaaa'
+    },
+    is: {
+        username: 'b001',
+        password: 'aaaa'
+    },
+};
+
+document.querySelectorAll('input[name="login"]').forEach(function(radioBtn) {
+    radioBtn.addEventListener('change', function() {
+        const selectedValue = document.querySelector('input[name="login"]:checked').value;
+
+        if (selectedValue && loginData[selectedValue]) {
+            document.querySelector('input[name="username"]').value = loginData[selectedValue].username;
+            document.querySelector('input[name="password"]').value = loginData[selectedValue].password;
+        }
+    });
+});
+
+
+
+</script>

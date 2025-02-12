@@ -1,0 +1,706 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.selling.jc.mapper.gmjSellingMapper">
+		
+		
+	<select id="getMenu" resultType="MenuVO">
+		select * from menu
+	</select>	
+	
+	<select id="selgmj" resultType="String" parameterType="int">
+		select store_nm from store where store_no=#{storeNo}
+	</select>
+	
+	<select id="getAll" resultType="SellingVO" parameterType="int">
+		select s.selling_no, s.store_no,s.selling_date, 
+			s.selling_total, sd.menu_no, sd.selling_amount, st.store_nm, m.menu_nm,m.menu_price, c.ctgry_nm  
+		from selling s, selling_detail sd, store st, menu m, ctgry c
+		where s.selling_no = sd.selling_no
+		and st.store_no=s.store_no
+		and m.menu_no=sd.menu_no
+		and c.ctgry_no=m.ctgry_no
+	    and  extract(month from s.selling_date)= #{month}
+   		and  extract(year from s.selling_date)= #{year}
+		<if test="storeNo!=null and storeNo!=''">
+			and st.store_no=#{storeNo}
+		</if>
+	</select>
+	
+	
+	<select id="bestseller" resultType="SellingVO" parameterType="hashMap">
+	select 
+	    row_number() over(partition by month, year order by totalAmount desc) as rank,
+	    month, year,menu_no, menu_nm,totalAmount
+	from (
+	    select 
+	        extract(month from s.selling_date) as month,
+	        extract(year from s.selling_date) as year,
+	        sd.menu_no,menu_nm,
+	        sum(sd.selling_amount) as totalAmount
+	    from 
+	        selling_detail sd
+	    join 
+	        selling s on s.selling_no = sd.selling_no
+	    join menu m on sd.menu_no=m.menu_no
+	    where 
+	        s.store_no = #{storeNo}
+	        and extract(month from s.selling_date)=#{month}
+	        and extract(year from s.selling_date)=#{year}
+	    group by 
+	        extract(month from s.selling_date), 
+	        extract(year from s.selling_date), 
+	        sd.menu_no,menu_nm
+	) subquery
+	order by year, month, rank
+	</select>
+	
+	
+	<select id="bestsellerTop5" resultType="SellingVO" parameterType="hashMap">
+	select 
+		rank,
+		month, 
+		year, 
+		menu_no, 
+		menu_nm,
+		total_amount
+	from (
+		select 
+			row_number() over(
+				partition by extract(month from s.selling_date), extract(year from s.selling_date) 
+				order by sum(sd.selling_amount) desc
+			) as rank,
+			extract(month from s.selling_date) as month,
+			extract(year from s.selling_date) as year,
+			sd.menu_no,
+			menu_nm,
+			sum(sd.selling_amount) as total_amount
+		from 
+			selling_detail sd
+		join 
+			selling s on s.selling_no = sd.selling_no
+		join menu m on sd.menu_no = m.menu_no
+		join store st on st.store_no = s.store_no
+		where 
+			s.store_no = #{storeNo}
+			and extract(month from s.selling_date) = #{month}
+			and extract(year from s.selling_date) = #{year}
+		group by 
+			extract(month from s.selling_date), 
+			extract(year from s.selling_date), 
+			sd.menu_no, 
+			menu_nm
+	) subquery
+	where rank between 1 and 5
+	order by year, month, rank
+	
+	</select>
+	
+	
+	
+	<select id="getYear" parameterType="int" resultType="kr.or.ddit.vo.SellingVO">
+		select 
+		    distinct extract(year from selling_date) as year
+		from selling s, store st
+		where s.store_no=st.store_no
+		and st.store_no=#{storeNo}
+		order by year
+	</select>
+	
+	<select id="getMonth" parameterType="int" resultType="kr.or.ddit.vo.SellingVO">
+		select 
+		    distinct extract(month from selling_date) as month
+		from selling s, store st
+		where s.store_no=st.store_no
+		and st.store_no=#{storeNo}
+		order by month
+	</select>
+	
+
+	
+	
+	<select id="dateGraph" parameterType="hashMap" resultType="SellingVO">
+		SELECT 
+		    st.STORE_NO, 
+		    st.STORE_NM 
+		    	,TO_CHAR(s.SELLING_DATE, 'YYYY-MM') AS monthS, 
+		    	SUM(s.SELLING_TOTAL) AS monthlySales
+		FROM 
+		    STORE st
+		JOIN 
+		    SELLING s ON st.STORE_NO = s.STORE_NO
+		where st.store_no= #{storeNo}
+		and extract(year from selling_date)=#{year}
+		GROUP BY 
+		    st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'YYYY-MM')
+		ORDER BY 
+		    st.STORE_NO, monthS
+	</select>
+	
+	
+	<select id="dateGraph2" parameterType="hashMap" resultType="SellingVO">
+		SELECT 
+		    st.STORE_NO, 
+		    st.STORE_NM 
+		    	,TO_CHAR(sb.store_budget_date, 'YYYY-MM') AS monthY, 
+		    	SUM(sb.store_budget) as monthlyYSales
+				FROM store_budget  sb, store st
+				WHERE sb.store_no=st.store_no
+				and sb.store_budget_ty = 2
+				AND st.store_no = #{storeNo}
+				and extract(year from store_budget_date)=#{year}
+				GROUP BY 
+				    st.STORE_NO, st.STORE_NM,TO_CHAR(sb.store_budget_date, 'YYYY-MM')
+				ORDER BY 
+				    st.STORE_NO, monthY
+	</select>
+	
+	<select id="compareWithLastyear">
+	WITH 
+		lastYearSales AS (
+		    SELECT 
+		        st.STORE_NO, 
+		        st.STORE_NM, 
+		        extract(year from s.SELLING_DATE) as year, 
+		        SUM(s.SELLING_TOTAL) AS SALES
+		    FROM 
+		        STORE st
+		    JOIN 
+		        SELLING s ON st.STORE_NO = s.STORE_NO
+		    WHERE st.store_no = 1    
+		    AND TO_CHAR(s.SELLING_DATE, 'YYYY') = #{year}-1
+		    GROUP BY 
+		        st.STORE_NO, st.STORE_NM, extract(year from s.SELLING_DATE)
+		),
+		thisYearSales AS (
+		    SELECT 
+		        st.STORE_NO, 
+		        st.STORE_NM, 
+		        extract(year from s.SELLING_DATE) AS year,
+		        SUM(s.SELLING_TOTAL) AS SALES
+		    FROM 
+		        STORE st
+		    JOIN 
+		        SELLING s ON st.STORE_NO = s.STORE_NO
+		    WHERE st.store_no = #{storeNo}
+		    AND TO_CHAR(s.SELLING_DATE, 'YYYY') = #{year}
+		    GROUP BY 
+		        st.STORE_NO, st.STORE_NM,extract(year from s.SELLING_DATE)
+		)
+		SELECT TY.store_no,
+		    TY.STORE_NM,
+		    NVL(LY.SALES, 0) AS lastYearSales,
+		    NVL(TY.SALES, 0) AS thisYearSales,
+		    CASE 
+		        WHEN NVL(LY.SALES, 0) = 0 THEN 0
+		        ELSE ROUND(((NVL(TY.SALES, 0) - NVL(LY.SALES, 0)) / NVL(LY.SALES, 1)) * 100, 2)
+		    END AS growthRate
+		FROM 
+		    lastYearSales LY 
+		full outer join 
+		    thisYearSales TY ON LY.year =#{year}-1 and ty.year=#{year}
+	</select>
+	
+	<select id="compareWithLast" parameterType="hashMap" resultType="kr.or.ddit.vo.SellingVO">
+		WITH MONTHS AS (
+		    SELECT TO_CHAR(ADD_MONTHS(TO_DATE(#{year}||'01', 'YYYY-MM'), LEVEL-1), 'YYYY-MM') AS monthS
+		    FROM DUAL
+		    <![CDATA[
+		    CONNECT BY LEVEL <= 12]]> 
+		),
+		lastYearSales AS (
+		    SELECT 
+		        st.STORE_NO, 
+		        st.STORE_NM, 
+		        TO_CHAR(s.SELLING_DATE, 'MM') AS month,
+		        SUM(s.SELLING_TOTAL) AS SALES
+		    FROM 
+		        STORE st
+		    JOIN 
+		        SELLING s ON st.STORE_NO = s.STORE_NO
+		    WHERE st.store_no =#{storeNo}   
+		    AND TO_CHAR(s.SELLING_DATE, 'YYYY') = #{year}-1
+		    GROUP BY 
+		        st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'MM')
+		),
+		thisYearSales AS (
+		    SELECT 
+		        st.STORE_NO, 
+		        st.STORE_NM, 
+		        TO_CHAR(s.SELLING_DATE, 'MM') AS month,
+		        SUM(s.SELLING_TOTAL) AS SALES
+		    FROM 
+		        STORE st
+		    JOIN 
+		        SELLING s ON st.STORE_NO = s.STORE_NO
+		    WHERE st.store_no = 1
+		    AND TO_CHAR(s.SELLING_DATE, 'YYYY') = #{year}
+		    GROUP BY 
+		        st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'MM')
+		)
+		SELECT TY.store_no,
+		    TY.STORE_NM,
+		    m.monthS as tm,
+		    NVL(LY.SALES, 0) AS lastYearSales,
+		    NVL(TY.SALES, 0) AS thisYearSales,
+		    CASE 
+		        WHEN NVL(LY.SALES, 0) = 0 THEN 0
+		        ELSE ROUND(((NVL(TY.SALES, 0) - NVL(LY.SALES, 0)) / NVL(LY.SALES, 1)) * 100, 2)
+		    END AS growthRate
+		FROM 
+		    MONTHS m
+		LEFT JOIN 
+		    lastYearSales LY ON TO_CHAR(TO_DATE(m.monthS, 'YYYY-MM'), 'MM') = LY.month
+		LEFT JOIN 
+		    thisYearSales TY ON TO_CHAR(TO_DATE(m.monthS, 'YYYY-MM'), 'MM') = TY.month
+		ORDER BY 
+		    m.monthS
+	</select>
+	
+	
+	
+	
+	<select id="getBSYear" parameterType="int" resultType="kr.or.ddit.vo.SellingVO">
+		select distinct extract(year from store_order_date) year
+		from store_order
+		order by year desc
+	</select>
+	
+	<select id="getBSMonth" parameterType="int" resultType="kr.or.ddit.vo.SellingVO">
+		select distinct extract(month from store_order_date) month
+		from store_order
+		order by month
+	</select>
+	
+	
+	<select id="bsBestSellerItem" parameterType="hashMap" resultType="SellingVO">
+		select row_number() over(order by total desc) as rank, item_nm,
+		    year, month,total
+		from(select i.item_nm,i.item_no,
+		    extract(year from s.store_order_date) as year,
+		    extract(month from s.store_order_date) as month,
+		    sum(store_order_amount) as total
+		from store_order_detail sd, store_order s, item i
+		where sd.store_order_no=s.store_order_no
+		and i.item_no = sd.item_no
+		and s.store_order_status=1
+		and extract(year from s.store_order_date)=#{year}
+		and extract(month from s.store_order_date)=#{month}
+		group by extract(year from s.store_order_date),extract(month from s.store_order_date),i.item_nm,i.item_no)
+	</select>
+	
+	
+	<select id="bsBestSellerItemTop5" parameterType="hashMap" resultType="SellingVO">
+		select rank, month, year, item_nm,total
+		from(
+		select row_number() over(order by total desc) as rank, item_nm,
+				    year, month,total
+				from(select i.item_nm,i.item_no,
+				    extract(year from s.store_order_date) as year,
+				    extract(month from s.store_order_date) as month,
+				    sum(store_order_amount) as total
+				from store_order_detail sd, store_order s, item i
+				where sd.store_order_no=s.store_order_no
+				and i.item_no = sd.item_no
+				and s.store_order_status=1
+				and extract(year from s.store_order_date)=#{year}
+				and extract(month from s.store_order_date)=#{month}
+		        group by extract(year from s.store_order_date),extract(month from s.store_order_date),i.item_nm,i.item_no)
+		)where rank between 1 and 5
+	</select>
+	
+	
+	<select id="bsBestSellerMenu" parameterType="hashMap" resultType="SellingVO">
+		select row_number() over(order by total desc) as rank, menu_nm, year, month, menu_no, total
+		from(
+		select m.menu_no,m.menu_nm,extract(year from selling_date) year,extract(month from selling_date) month,
+		        sum(selling_amount) total
+		from selling s, selling_detail sd, menu m
+		where m.menu_no=sd.menu_no
+		and s.selling_no=sd.selling_no
+		and extract(year from selling_date)=#{year}
+		and extract(month from selling_date)=#{month}
+		group by  m.menu_no,m.menu_nm,extract(year from selling_date) ,extract(month from selling_date))
+	</select>
+	
+	
+	<select id="bsBestSellerMenuTop5" parameterType="hashMap" resultType="SellingVO">
+		select rank, month, year, menu_nm,total
+		from(	
+		select row_number() over(order by total desc) as rank, menu_nm, year, month, menu_no, total
+		from(
+		select m.menu_no,m.menu_nm,extract(year from selling_date) year,extract(month from selling_date) month,
+		    sum(selling_amount) total
+		from selling s, selling_detail sd, menu m
+		where m.menu_no=sd.menu_no
+		and s.selling_no=sd.selling_no
+		and extract(year from selling_date)=#{year}
+		and extract(month from selling_date)=#{month}
+		group by  m.menu_no,m.menu_nm,extract(year from selling_date) ,extract(month from selling_date))
+		)where rank between 1 and 5
+	</select>
+	
+	
+	
+	<select id="bsMargin" parameterType="hashMap" resultType="SellingVO">
+		select  
+		        to_char(store_order_date,'YYYY-MM') as monthS,
+		        sum(store_order_price) AS monthlySales
+		from store_order so, store_order_detail sod
+		where so.store_order_no=sod.store_order_no
+		and so.store_order_status=1
+		    and extract(year from store_order_date)=#{year}
+		    and store_order_sum is not null
+		    group by to_char(store_order_date,'YYYY-MM')
+		    ORDER BY monthS
+	</select>
+	
+	
+	<select id="bsBudget" parameterType="hashMap" resultType="SellingVO">
+		SELECT 
+		    	to_char(head_budget_date,'YYYY-MM') as monthY,
+    			sum(head_budget)  as monthlyYSales
+				from head_budget
+				where head_budget_ty=2
+				
+				and extract(year from head_budget_date)=#{year}
+				group by to_char(head_budget_date,'YYYY-MM')
+				order by monthY
+	</select>
+	
+	<select id="bsMenu" resultType="kr.or.ddit.vo.SellingVO" parameterType="hashMap">
+		select m.menu_no, m.menu_nm, sum(sd.selling_amount) as totalMenu
+		from selling s, selling_detail sd, menu m
+		where s.selling_no=sd.selling_no
+		and m.menu_no=sd.menu_no
+		and extract(year from s.selling_date)=#{year}
+		and extract(month from s.selling_date)=#{month}
+		group by m.menu_no, m.menu_nm
+	</select>
+	
+	
+	<select id="bsItem" resultType="kr.or.ddit.vo.SellingVO" parameterType="hashMap">
+		select i.item_no, i.item_nm, sum(store_order_amount) as totalItem
+		from store_order so, store_order_detail sod, item i
+		where so.store_order_no = sod.store_order_no
+		and i.item_no=sod.item_no
+		and so.store_order_status=1
+		and extract(year from so.store_order_date) =#{year}
+		and extract(month from so.store_order_date) =#{month}
+		group by i.item_no, i.item_nm
+	</select>
+	
+	
+	<select id="lastcompare">
+	with months as(
+	    select to_char(add_months(to_date(#{year}||'01','YYYY-MM'),level-1),'YYYY-MM') as monthS
+	    from dual
+	    <![CDATA[
+	    connect by level <=12 ]]>
+	),
+	lastYearSales as(
+	    select to_char(so.store_order_date,'MM') as month, sum(store_order_price) as sales
+	    from store_order so, store_order_detail sod
+	    where so.store_order_no = sod.store_order_no
+	    and extract(year from store_order_date)=#{year}-1
+	    group by to_char(so.store_order_date,'MM')
+	),
+	thisYearSales as(
+	    select to_char(so.store_order_date,'MM') as month, sum(store_order_price) as sales
+	    from store_order so, store_order_detail sod
+	    where so.store_order_no = sod.store_order_no
+	    and extract(year from store_order_date)=#{year}
+	    group by to_char(so.store_order_date,'MM')
+	)
+	select m.monthS,nvl(ly.sales,0) as lastYearSales, nvl(ty.sales,0) as thisYearSales,
+	    CASE 
+	        WHEN NVL(LY.SALES, 0) = 0 THEN 0
+	        ELSE ROUND(((NVL(TY.SALES, 0) - NVL(LY.SALES, 0)) / NVL(LY.SALES, 1)) * 100, 2)
+	    END AS growthRate
+	from months m, lastYearSales ly, thisYearSales ty
+	where  TO_CHAR(TO_DATE(m.monthS, 'YYYY-MM'), 'MM')=ly.month
+	and  TO_CHAR(TO_DATE(m.monthS, 'YYYY-MM'), 'MM')=ty.month
+	order by m.monthS
+	
+	</select>
+	
+	
+	<select id="lastcompareyear">
+    with lastYearSales as (
+        select 
+            extract(year from so.store_order_date) as year, 
+            sum(store_order_price) as sales
+        from store_order so, store_order_detail sod
+        where so.store_order_no = sod.store_order_no
+        and extract(year from store_order_date) = #{year} - 1
+        group by extract(year from so.store_order_date)
+    ),
+    thisYearSales as (
+        select 
+            extract(year from so.store_order_date) as year, 
+            sum(store_order_price) as sales
+        from store_order so, store_order_detail sod
+        where so.store_order_no = sod.store_order_no
+        and extract(year from store_order_date) = #{year}
+        group by extract(year from so.store_order_date)
+    )
+    select 
+        #{year} - 1 as lastYear, 
+        #{year} as thisYear,
+        nvl(ly.sales, 0) as lastYearSales, 
+        nvl(ty.sales, 0) as thisYearSales,
+        case 
+            when nvl(ly.sales, 0) = 0 then 0
+            else round(((nvl(ty.sales, 0) - nvl(ly.sales, 0)) / nvl(ly.sales, 1)) * 100, 2)
+        end as growthRate
+    from lastYearSales ly
+    full outer join thisYearSales ty
+    on ly.year = #{year} - 1 and ty.year = #{year}
+</select>
+	
+	
+	<select id="storeNm" resultType="kr.or.ddit.vo.StoreVO">
+		select store_nm, store_no from store
+	
+	</select>
+	
+	<select id="bsGMJMargin" resultType="kr.or.ddit.vo.SellingVO" >
+	SELECT 
+	    st.STORE_NO, 
+	    st.STORE_NM 
+	    ,TO_CHAR(s.SELLING_DATE, 'YYYY') AS yearS, 
+	    SUM(s.SELLING_TOTAL) AS yearlySales
+	FROM 
+	    STORE st
+	JOIN 
+	    SELLING s ON st.STORE_NO = s.STORE_NO
+	where TO_CHAR(s.SELLING_DATE, 'YYYY')=#{year}
+	GROUP BY 
+	    st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'YYYY')
+	ORDER BY 
+	    st.STORE_NO, yearS
+	</select>
+	
+	<select id="gmjrank">
+	select row_number() over(order by T.yearlySales desc) as rank, T.*
+		from(
+		SELECT 
+			    st.STORE_NO, 
+			    st.STORE_NM 
+			    ,TO_CHAR(s.SELLING_DATE, 'YYYY') AS yearS, 
+			    SUM(s.SELLING_TOTAL) AS yearlySales
+			FROM 
+			    STORE st
+			JOIN 
+			    SELLING s ON st.STORE_NO = s.STORE_NO
+			where TO_CHAR(s.SELLING_DATE, 'YYYY')=#{year}
+			GROUP BY 
+			    st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'YYYY')
+			ORDER BY 
+			    st.STORE_NO, yearS)T
+	</select>
+	
+	
+	
+	<insert id="mchdr1">
+		insert into selling(selling_no, store_no, selling_date)
+		values(nvl((SELECT MAX(selling_no) FROM selling),0)+1, #{storeNo}, sysdate)
+	</insert>
+	
+	
+	<insert id="mchdr2">
+		insert into selling_detail(selling_detail_no, selling_no, menu_no, selling_amount)
+		values()
+	</insert>
+	
+	<update id="mchdr3">
+		update selling
+		set selling_total=#{sellingTotal}
+		where selling_no=#{sellingNo}
+	</update>
+	
+	<!-- 
+	매출 등록 요청 : {menuNo=15, sellingAmount=3, howmuch=3000, sellingTotal=9000, storeNo=1}
+	int mchdrSelling(Map<String, Object> map);
+	int mchdrSellingDetail(Map<String, Object> map);
+	
+	올때 : SellingVO(sellingNo=0,..
+	나갈때 : SellingVO(sellingNo=138,..
+	 -->
+	<insert id="mchdrSelling" parameterType="kr.or.ddit.vo.SellingVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="sellingNo">
+			SELECT NVL(MAX(selling_no),0) + 1 FROM SELLING
+		</selectKey>
+	
+		INSERT INTO SELLING(SELLING_NO, STORE_NO, SELLING_DATE, SELLING_TOTAL)
+		VALUES(#{sellingNo},#{storeNo},SYSDATE, #{sellingTotal})
+	</insert>
+	
+	<!-- 
+	올때 : SellingVO(sellingNo=138, .., sellingDetailNo=0,..
+	나갈때 : SellingVO(sellingNo=138, .., sellingDetailNo=227,..
+	 -->
+	<insert id="mchdrSellingDetail" parameterType="kr.or.ddit.vo.SellingVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="sellingDetailNo">
+			SELECT NVL(MAX(selling_detail_no),0)+1 FROM selling_detail
+		</selectKey>
+		
+		INSERT INTO SELLING_DETAIL(SELLING_DETAIL_NO, SELLING_NO, MENU_NO, SELLING_AMOUNT)
+		VALUES(#{sellingDetailNo},#{sellingNo},#{menuNo},#{sellingAmount})
+	</insert>
+	
+	<!-- 
+	본사 매출(매출,예산,작년 종합)
+	List<SellingVO> getTable(Map<String, Object> map)
+	 -->
+	<select id="getTable" parameterType="hashMap" resultType="kr.or.ddit.vo.SellingVO">
+		<![CDATA[
+		SELECT T1.MONTH_LIST MONTH_S
+		     , NVL(T2.MONTHLYSALES,0) MONTHLY_SALES
+		     , NVL(T3.MONTHLYYSALES,0) MONTHLY_Y_SALES
+		     , (NVL(T2.MONTHLYSALES,0) - NVL(T3.MONTHLYYSALES,0)) PROFIT
+		     , NVL(T4.GROWTHRATE,0) GROWTH_RATE
+		FROM
+		(
+		    SELECT TO_CHAR(ADD_MONTHS(TO_DATE(#{year}||'01', 'YYYYMM'), LEVEL - 1), 'YYYY-MM') AS MONTH_LIST 
+		    FROM DUAL
+		    CONNECT BY LEVEL <= 12
+		) T1 LEFT OUTER JOIN (
+		select to_char(store_order_date,'YYYY-MM') as MONTHS
+		     , sum(store_order_price) AS MONTHLYSALES
+		from store_order so, store_order_detail sod
+		where so.store_order_no=sod.store_order_no
+		and so.store_order_status=1
+		    and extract(year from store_order_date)=#{year}
+		    and store_order_sum is not null
+		    group by to_char(store_order_date,'YYYY-MM')
+		    ORDER BY monthS
+		) T2
+		ON(T1.MONTH_LIST = T2.monthS)
+		LEFT OUTER JOIN (
+		SELECT to_char(head_budget_date,'YYYY-MM') as MONTHY
+		     , sum(head_budget)  as MONTHLYYSALES
+		from   head_budget
+		where  head_budget_ty=2			
+		and    extract(year from head_budget_date)=#{year}
+		group by to_char(head_budget_date,'YYYY-MM')
+		order by monthY
+		) T3 ON(T1.MONTH_LIST = T3.MONTHY)
+		LEFT OUTER JOIN (
+		with months as(
+		    select to_char(add_months(to_date(#{year}||'01','YYYY-MM'),level-1),'YYYY-MM') as monthS
+		    from dual
+		    connect by level <=12
+		),
+			lastYearSales as(
+		    select to_char(so.store_order_date,'MM') as month, sum(store_order_price) as sales
+		    from store_order so, store_order_detail sod
+		    where so.store_order_no = sod.store_order_no
+		    and extract(year from store_order_date)=#{year}-1
+		    group by to_char(so.store_order_date,'MM')
+		),
+			thisYearSales as(
+		    select to_char(so.store_order_date,'MM') as month, sum(store_order_price) as sales
+		    from store_order so, store_order_detail sod
+		    where so.store_order_no = sod.store_order_no
+		    and extract(year from store_order_date)=#{year}
+		    group by to_char(so.store_order_date,'MM')
+		)
+		select m.MONTHS,
+		    CASE 
+		        WHEN NVL(LY.SALES, 0) = 0 THEN 0
+		        ELSE ROUND(((NVL(TY.SALES, 0) - NVL(LY.SALES, 0)) / NVL(LY.SALES, 1)) * 100, 2)
+		    END AS GROWTHRATE
+		from months m, lastYearSales ly, thisYearSales ty
+		where  TO_CHAR(TO_DATE(m.MONTHS, 'YYYY-MM'), 'MM')=ly.month
+		and  TO_CHAR(TO_DATE(m.MONTHS, 'YYYY-MM'), 'MM')=ty.month
+		order by m.MONTHS
+		) T4 ON(T1.MONTH_LIST = T4.MONTHS)
+		ORDER BY T1.MONTH_LIST
+		]]>
+	</select>
+	
+	
+	<select id="getTable2">
+	<![CDATA[
+	select T1.MONTH_LIST MONTH_S, T2. store_nm,nvl(T2.monthlySales,0) MONTHLY_SALES ,nvl(T3.monthlyYSales,0) MONTHLY_Y_SALES
+	    ,(nvl(T2.monthlySales,0)-nvl(T3.monthlyYSales,0) ) profit,NVL(T4.GROWTHRATE,0) GROWTH_RATE
+	    from(
+	 SELECT TO_CHAR(ADD_MONTHS(TO_DATE(#{year}||'01', 'YYYYMM'), LEVEL - 1), 'YYYY-MM') AS MONTH_LIST 
+			    FROM DUAL
+			    CONNECT BY LEVEL <= 12
+			) T1
+	        left outer join(
+	SELECT st.STORE_NO, st.STORE_NM ,TO_CHAR(s.SELLING_DATE, 'YYYY-MM') AS monthS, 
+	    SUM(s.SELLING_TOTAL) AS monthlySales
+	FROM STORE st
+	JOIN SELLING s ON st.STORE_NO = s.STORE_NO
+	where st.store_no= #{storeNo}
+	and extract(year from selling_date)=#{year}
+	GROUP BY st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'YYYY-MM')
+	ORDER BY st.STORE_NO, monthS
+	)T2 on T1.MONTH_LIST = T2.monthS
+	left outer join 
+	(SELECT st.STORE_NO, st.STORE_NM, TO_CHAR(sb.store_budget_date, 'YYYY-MM') AS monthY, 
+	    SUM(sb.store_budget) as monthlyYSales
+	FROM store_budget  sb, store st
+	WHERE sb.store_no=st.store_no
+	and sb.store_budget_ty = 2
+	AND st.store_no = #{storeNo}
+	and extract(year from store_budget_date)=#{year}
+	GROUP BY st.STORE_NO, st.STORE_NM,TO_CHAR(sb.store_budget_date, 'YYYY-MM')
+	ORDER BY st.STORE_NO, monthY) T3
+	ON(T1.MONTH_LIST = T3.MONTHY)
+	left outer join (
+	WITH MONTHS AS (
+		    SELECT TO_CHAR(ADD_MONTHS(TO_DATE(#{year}||'01', 'YYYY-MM'), LEVEL-1), 'YYYY-MM') AS monthS
+		    FROM DUAL
+		   
+		    CONNECT BY LEVEL <= 12
+		),
+		lastYearSales AS (
+		    SELECT 
+		        st.STORE_NO, 
+		        st.STORE_NM, 
+		        TO_CHAR(s.SELLING_DATE, 'MM') AS month,
+		        SUM(s.SELLING_TOTAL) AS SALES
+		    FROM 
+		        STORE st
+		    JOIN 
+		        SELLING s ON st.STORE_NO = s.STORE_NO
+		    WHERE st.store_no =#{storeNo}
+		    AND TO_CHAR(s.SELLING_DATE, 'YYYY') =#{year}-1
+		    GROUP BY 
+		        st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'MM')
+		),
+		thisYearSales AS (
+		    SELECT 
+		        st.STORE_NO, 
+		        st.STORE_NM, 
+		        TO_CHAR(s.SELLING_DATE, 'MM') AS month,
+		        SUM(s.SELLING_TOTAL) AS SALES
+		    FROM 
+		        STORE st
+		    JOIN 
+		        SELLING s ON st.STORE_NO = s.STORE_NO
+		    WHERE st.store_no = #{storeNo}
+		    AND TO_CHAR(s.SELLING_DATE, 'YYYY') = #{year}
+		    GROUP BY 
+		        st.STORE_NO, st.STORE_NM, TO_CHAR(s.SELLING_DATE, 'MM')
+		)
+		SELECT 
+		    m.monthS ,
+		    CASE 
+		        WHEN NVL(LY.SALES, 0) = 0 THEN 0
+		        ELSE ROUND(((NVL(TY.SALES, 0) - NVL(LY.SALES, 0)) / NVL(LY.SALES, 1)) * 100, 2)
+		    END AS growthRate
+		FROM MONTHS M
+		LEFT JOIN lastYearSales LY ON TO_CHAR(TO_DATE(M.monthS, 'YYYY-MM'), 'MM') = LY.month
+		LEFT JOIN thisYearSales TY ON TO_CHAR(TO_DATE(M.monthS, 'YYYY-MM'), 'MM') = TY.month
+		ORDER BY M.monthS
+		)T4
+	ON(T1.MONTH_LIST = T4.MONTHS)]]>
+	
+	</select>
+	
+	
+</mapper>

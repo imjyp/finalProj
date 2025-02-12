@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.fullcalendar.jm.mapper.EventBoardMapper">
+
+
+	<!-- 검색 공통 조건 -->
+	<sql id="where">
+		<if test="keyword!=null and keyword!=''">
+			AND (D.DEPT_NM LIKE '%' || #{keyword} || '%' <!-- 부서 -->
+		      OR T.CAL_TITLE LIKE '%' || #{keyword} || '%' <!-- 캘린더 제목 -->
+		      OR T.USER_NM LIKE '%' || #{keyword} || '%' <!-- 회원 이름 -->
+		    )
+		</if>
+	</sql>
+
+	<!--map: {currentPage=1, keyword=등록} -->
+	<select id="getList" parameterType="hashMap" resultMap="calendarMap">
+		WITH U AS(
+		    SELECT ROW_NUMBER() OVER(ORDER BY T.CAL_NM DESC) RNUM
+		         , T.*, D.DEPT_NM
+		    FROM (
+            SELECT A.CAL_NM,  <!-- 이벤트 게시판 번호 -->
+                   A.CALENDAR_TY,  <!-- 이벤트 게시판 코드 번호 -->
+                   A.CAL_TITLE,  <!-- 이벤트 게시글 제목 -->
+                   A.CAL_CONTENT,  <!-- 이벤트 게시글 내용 -->
+                   A.CAL_REG_DATE,  <!-- 이벤트 게시글 등록일 -->
+                   A.CAL_CNT,  <!-- 이벤트 게시글 조회수 -->
+                   A.CAL_STATUS,  <!-- 이벤트 게시글 상태 (예: 1 = 활성화) -->
+                   A.TEXT_COLOR, <!-- 이벤트 게시글 글자색 -->
+                   A.BG_COLOR, <!-- 이벤트 게시글 배경색 -->
+                   A.READER_NO, <!-- 이벤트 게시글 읽는대상자 -->
+                   A.USER_NO,  <!-- 이벤트 게시글 작성자 번호 -->
+                   <!-- 작성자 이름 (서브쿼리로 조회) -->
+                   (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) AS USER_NM,
+                   A.FILE_GROUP_NO,  <!-- 첨부 파일 그룹 번호 -->
+                   A.CAL_START,  <!-- 이벤트 게시글 시작일 -->
+                   A.CAL_END  <!-- 이벤트 게시글 종료일 -->
+                   ,F.FILE_SAVE_LOCATE
+	            FROM CALENDAR A  <!-- 이벤트 게시판 테이블 조회 -->
+	            LEFT OUTER JOIN FILE_GROUP G ON A.FILE_GROUP_NO = G.FILE_GROUP_NO
+        	LEFT OUTER JOIN FILE_DETAIL F ON G.FILE_GROUP_NO = F.FILE_GROUP_NO
+	            WHERE A.CALENDAR_TY = 2  <!-- 특정 이벤트 게시판 코드 번호 (2번 이벤트 게시판만 필터링) -->
+	        ) T  <!-- 위 서브쿼리의 결과를 T로 별칭 지정 -->
+	        LEFT OUTER JOIN EMPLOYEE E  <!-- 직원 정보 테이블 -->
+	        	on T.USER_NO = E.USER_NO
+	        LEFT OUTER JOIN DEPT D  <!-- 부서 정보 테이블 -->
+        		on E.DEPT_NO = D.DEPT_NO
+       		
+		    WHERE
+		    	CAL_STATUS = 1	<!-- 활성화된 게시글만 필터링 -->
+		    <include refid="where"></include>
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	
+	
+<!-- 	map: {currentPage=1, keyword=} -->
+	<select id="total" parameterType="hashMap" resultType="int">
+    <!-- 게시판 데이터의 총 개수를 계산하는 쿼리 -->
+    SELECT COUNT(*)  <!-- 최종적으로 게시글 개수를 반환 -->
+    FROM (
+        SELECT A.CAL_NM,  <!-- 이벤트 게시판 번호 -->                                     
+				A.CALENDAR_TY,  <!-- 이벤트 게시판 코드 번호 -->                             
+				A.CAL_TITLE,  <!-- 이벤트 게시글 제목 -->                                  
+				A.CAL_CONTENT,  <!-- 이벤트 게시글 내용 -->                                
+				A.CAL_REG_DATE,  <!-- 이벤트 게시글 등록일 -->                              
+				A.CAL_CNT,  <!-- 이벤트 게시글 조회수 -->                                   
+				A.CAL_STATUS,  <!-- 이벤트 게시글 상태 (예: 1 = 활성화) -->                    
+				A.TEXT_COLOR, <!-- 이벤트 게시글 글자색 -->                                 
+				A.BG_COLOR, <!-- 이벤트 게시글 배경색 -->                                    
+				A.READER_NO, <!-- 이벤트 게시글 읽는대상자 -->                                    
+				A.USER_NO,  <!-- 이벤트 게시글 작성자 번호 -->                                
+				<!-- 작성자 이름 (서브쿼리로 조회) -->                                         
+				(SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) AS USER_NM,
+				A.FILE_GROUP_NO,  <!-- 첨부 파일 그룹 번호 -->                             
+				A.CAL_START,  <!-- 이벤트 게시글 시작일 -->                                 
+				A.CAL_END  <!-- 이벤트 게시글 종료일 -->
+				
+        FROM CALENDAR A
+        
+        WHERE A.CALENDAR_TY = 2   <!-- 특정 게시판 코드 번호 (2번 게시판만 조회) -->
+    )T, EMPLOYEE E, DEPT D
+	    WHERE T.USER_NO = E.USER_NO
+	    AND E.DEPT_NO = D.DEPT_NO
+	    AND CAL_STATUS = 1
+      <include refid="where"></include>   <!-- 추가적인 필터 조건 동적으로 포함 -->
+	</select>
+
+	<!-- detail map 사용하지 않고 조회 -->
+<!-- 	<select id="detail" parameterType="hashMap" resultType="CalendarVO"> -->
+<!-- 		SELECT -->
+<!-- 		    CAL_NM, -->
+<!-- 		    CAL_TITLE, -->
+<!-- 		    CAL_CONTENT, -->
+<!-- 		    CAL_START, -->
+<!-- 		    CAL_END, -->
+<!-- 		    TEXT_COLOR, -->
+<!-- 		    BG_COLOR, -->
+<!-- 		    B.USER_NO, -->
+<!-- 		    CALENDAR_TY, -->
+<!-- 		    FILE_GROUP_NO, -->
+<!-- 		    CAL_STATUS, -->
+<!-- 		    CAL_REG_DATE, -->
+<!-- 		    READER, -->
+<!-- 		    CAL_CNT, -->
+<!-- 		    USER_NM -->
+<!-- 		FROM CALENDAR B, TB_USER U -->
+<!-- 		WHERE B.USER_NO = U.USER_NO -->
+<!-- 		AND CAL_NM = #{calNm} -->
+<!-- 	</select> -->
+	
+	<select id="detail" parameterType="hashMap" resultMap="calendarMap">
+    SELECT 
+	    B.CAL_NM, 
+	    B.CAL_TITLE, 
+	    B.CAL_CONTENT, 
+	    B.CAL_START, 
+	    B.CAL_END, 
+	    B.USER_NO, 
+	    B.CALENDAR_TY, 
+	    B.FILE_GROUP_NO, 
+	    B.CAL_STATUS, 
+	    B.CAL_REG_DATE, 
+	    B.READER_NO, 
+	    B.CAL_CNT,
+		(SELECT U.USER_NM FROM TB_USER U WHERE B.USER_NO = U.USER_NO) AS USER_NM,
+	    G.FILE_GROUP_NO, 
+	    G.FILE_GROUP_NM, 
+	    G.FILE_REGDATE, 
+	    G.FILE_GROUP_TY,
+	    D.FILE_NO, 
+	    D.FILE_GROUP_NO, 
+	    D.FILE_ORIGINAL_NAME, 
+	    D.FILE_SAVE_NAME, 
+	    D.FILE_EXT, 
+	    D.FILE_SIZE, 
+	    D.FILE_SAVE_LOCATE, 
+	    D.FILE_MIME, 
+	    D.FILE_FANCYSIZE, 
+	    D.FILE_SAVE_DATE, 
+	    D.FILE_DOWNCOUNT
+	FROM CALENDAR B
+	JOIN TB_USER U ON B.USER_NO = U.USER_NO
+	LEFT OUTER JOIN FILE_GROUP G ON B.FILE_GROUP_NO = G.FILE_GROUP_NO
+	LEFT OUTER JOIN FILE_DETAIL D ON G.FILE_GROUP_NO = D.FILE_GROUP_NO
+	WHERE B.CAL_NM = #{calNm}
+	</select>
+	
+	<!-- 상세게시글 파일그룹 정보 -->
+ 	<select id="fileGroup" parameterType="int" resultMap="fileGroupMap"> 
+		SELECT S.FILE_GROUP_NO, FILE_ORIGINAL_NAME, FILE_SAVE_LOCATE
+		FROM  CALENDAR S 
+		     , FILE_GROUP G 
+		     , FILE_DETAIL D 
+		WHERE S.FILE_GROUP_NO = G.FILE_GROUP_NO 
+ 		    AND G.FILE_GROUP_NO = D.FILE_GROUP_NO 
+ 		    AND CAL_NM = #{calNm}
+ 	</select> 
+
+	<!-- 상세게시글 수정 -->	
+	<update id="update" parameterType="CalendarVO">
+		UPDATE CALENDAR
+		SET CAL_TITLE = #{calTitle}
+			, CAL_CONTENT = #{calContent}
+			, CAL_START = #{calStart}
+			, CAL_END = #{calEnd}
+			
+		WHERE CAL_NM = #{calNm}
+	</update>
+	
+	<!-- 상세게시글 삭제 -->
+	<update id="delete" parameterType="CalendarVO">
+		UPDATE CALENDAR
+		SET CAL_STATUS = 2
+		WHERE CAL_NM = #{calNm}	
+	</update>
+
+	<!-- 게시글 등록 -->
+	<insert id="createPost" parameterType="CalendarVO">
+		INSERT INTO CALENDAR(
+			CAL_NM,
+			CALENDAR_TY, 
+			CAL_TITLE, 
+			CAL_CONTENT, 
+			CAL_REG_DATE, 
+			CAL_STATUS, 
+			CAL_START, 
+			CAL_END, 
+			USER_NO
+			<if test="fileGroupNo != null and fileGroupNo != ''">
+				,FILE_GROUP_NO
+			</if>
+			)
+		VALUES(
+			(SELECT NVL(MAX(CAL_NM),0)+1 FROM CALENDAR),
+		 	2,
+		 	#{calTitle},
+		 	#{calContent},
+		 	SYSDATE,
+		 	1,
+		 	#{calStart},
+		 	#{calEnd},
+		 	'a001'
+		 	<if test="fileGroupNo != null and fileGroupNo != ''">
+				,#{fileGroupNo}
+			</if>
+		 	)
+		<selectKey resultType="int" keyProperty="calNm" order="AFTER">
+			SELECT MAX(CAL_NM) FROM CALENDAR
+		</selectKey>
+	</insert>
+	
+	
+	<resultMap type="CalendarVO" id="calendarMap">
+		<result property="calCnt" column="CAL_CNT"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="calStatus" column="CAL_STATUS"/>
+		<result property="calRegDate" column="CAL_REG_DATE"/>
+		<result property="calNm" column="CAL_NM"/>
+		<result property="calTitle" column="CAL_TITLE"/>
+		<result property="calContent" column="CAL_CONTENT"/>
+		<result property="calStart" column="CAL_START"/>
+		<result property="calEnd" column="CAL_END"/>
+		<result property="textColor" column="TEXT_COLOR"/>
+		<result property="bgColor" column="BG_COLOR"/>
+		<result property="userNo" column="USER_NO"/>
+		<result property="calendarTy" column="CALENDAR_TY"/>
+		<result property="readerNo" column="READER_NO"/>
+		
+		<result property="userNm" column="USER_NM"/>
+		
+		<association property="fileGroupVO" resultMap="fileGroupMap"></association>
+	</resultMap>
+	
+	<!-- FileGroupVO의 resultMap -->
+	<resultMap type="FileGroupVO" id="fileGroupMap">
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileGroupNm" column="FILE_GROUP_NM"/>
+		<result property="fileRegdate" column="FILE_REGDATE"/>
+		<result property="fileGroupTy" column="FILE_GROUP_TY"/>
+		<collection property="fileDetailVOList" resultMap="fileDetailMap"></collection>
+	</resultMap>
+	
+	<!-- FileDetailVO의 resultMap -->
+	<resultMap type="FileDetailVO" id="fileDetailMap">
+		<result property="fileNo" column="FILE_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileOriginalName" column="FILE_ORIGINAL_NAME"/>
+		<result property="fileSaveName" column="FILE_SAVE_NAME"/>
+		<result property="fileExt" column="FILE_EXT"/>
+		<result property="fileSize" column="FILE_SIZE"/>
+		<result property="fileSaveLocate" column="FILE_SAVE_LOCATE"/>
+		<result property="fileMime" column="FILE_MIME"/>
+		<result property="fileFancysize" column="FILE_FANCYSIZE"/>
+		<result property="fileSaveDate" column="FILE_SAVE_DATE"/>
+		<result property="fileDowncount" column="FILE_DOWNCOUNT"/>
+	</resultMap>
+	
+	
+</mapper>

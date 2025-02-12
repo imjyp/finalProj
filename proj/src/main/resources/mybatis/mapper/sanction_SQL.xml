@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.sanction.jw.mapper.SanctionMapper">
+
+
+	<sql id="where">
+		<if test="keyword!=null and keyword!=''">
+			AND (D.DEPT_NM LIKE '%' || #{keyword} || '%'
+		      OR T.DOC_TITLE LIKE '%' || #{keyword} || '%'
+		      OR T.USER_NM LIKE '%' || #{keyword} || '%'
+		    )
+		</if>
+	</sql>
+
+	<!-- map: {currentPage=1, keyword=등록} -->
+	<select id="getList" parameterType="hashMap" resultMap="sanctionDocMap">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.DOC_NO DESC) RNUM
+		         , T.*, D.DEPT_NM, D.DEPT_NO
+		    FROM
+		    (
+		        SELECT DOC_NO, A.USER_NO, DOC_TITLE, DOC_CONTENT, DOC_CREATE_DATE, DOC_TYPE_NO
+		             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+		             , (select dt.doc_type_nm from doc_type dt where dt.doc_type_no = A.doc_type_no) doc_type_nm
+		             , A.FILE_GROUP_NO, A.FILE_SAVE_LOCATE, A.FILE_ORIGINAL_NAME
+		        FROM (
+			        SELECT *
+			        FROM SANCTION_DOC X LEFT OUTER JOIN FILE_GROUP Y ON(X.FILE_GROUP_NO = Y.FILE_GROUP_NO)
+			                LEFT OUTER JOIN FILE_DETAIL Z ON(Y.FILE_GROUP_NO = Z.FILE_GROUP_NO)
+			    ) A
+		         
+		    ) T, EMPLOYEE E, DEPT D
+		    WHERE T.USER_NO = E.USER_NO
+		    AND E.DEPT_NO = D.DEPT_NO
+		    <include refid="where"></include>
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	<!-- map: {currentPage=1, keyword=등록} -->
+	<select id="getMysancList" parameterType="hashMap" resultType="kr.or.ddit.sanction.jw.vo.SanctionDocVO">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.DOC_NO DESC) RNUM
+		         , T.*
+		    FROM
+		    (
+				    SELECT
+				        SD.DOC_NO,
+				        SD.DOC_TITLE,
+				        DT.DOC_TYPE_NM,
+				        SD.DOC_CREATE_DATE,
+				        TU.USER_NM AS SANCTION_USER_NM,
+				        S.SANCTION_DATE, SANCTION_STATUS_NM,
+				        ROW_NUMBER() OVER (
+				            PARTITION BY SD.DOC_NO
+				            ORDER BY 
+				                CASE 
+				                    WHEN S.SANCTION_STATUS_NO = 3 THEN 1 
+				                    WHEN S.SANCTION_STATUS_NO = 1 THEN 2 
+				                    WHEN S.SANCTION_STATUS_NO = 2 THEN 3 
+				                END
+				        ) AS RANKING
+				    FROM
+				    SANCTION S
+				        JOIN TB_USER TU ON S.SANCTION_USER = TU.USER_NO
+				        JOIN SANCTION_STATUS SS ON S.SANCTION_STATUS_NO = SS.SANCTION_STATUS_NO
+				        JOIN SANCTION_DOC SD ON S.DOC_NO = SD.DOC_NO
+				        JOIN DOC_TYPE DT ON SD.DOC_TYPE_NO = DT.DOC_TYPE_NO
+                        
+				    WHERE SD.USER_NO = #{userId}
+				        
+				) T
+				WHERE
+                 RANKING = 1
+		      AND (T.SANCTION_STATUS_NM LIKE '%' || #{keyword} || '%'
+		      OR T.DOC_TITLE LIKE '%' || #{keyword} || '%'
+		    )
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	<select id="pendingList" parameterType="hashMap" resultType="kr.or.ddit.sanction.jw.vo.SanctionVO">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.DOC_NO DESC) RNUM
+		         , T.*
+		    FROM 
+			    (
+			        SELECT SD.DOC_NO, S.SANCTION_NO,DOC_CREATE_DATE, DOC_TITLE, USER_NM, DEPT_NM, DOC_TYPE_NM, SANCTION_USER
+			             ,  LAG(S.SANCTION_STATUS_NO) OVER(PARTITION BY SD.DOC_NO ORDER BY S.SANCTION_NO) BEF_SANCTION_STATUS_NO
+			             , SANCTION_STATUS_NO
+			             
+			        FROM   SANCTION S INNER JOIN SANCTION_DOC SD on S.DOC_NO = SD.DOC_NO
+			                    INNER JOIN DOC_TYPE DT ON SD.DOC_TYPE_NO = DT. DOC_TYPE_NO
+			                    INNER JOIN TB_USER TU ON SD.USER_NO = TU.USER_NO
+			                    INNER JOIN EMPLOYEE E ON S.SANCTION_USER = E.USER_NO 
+			                    INNER JOIN DEPT D ON E.DEPT_NO = D.DEPT_NO
+			    ) T
+		    WHERE T.SANCTION_USER = #{userId}
+		    AND (BEF_SANCTION_STATUS_NO = 2 OR BEF_SANCTION_STATUS_NO IS NULL)
+		    AND T.SANCTION_STATUS_NO = 1
+		    AND (T.DOC_TYPE_NM LIKE '%' || #{keyword} || '%'
+		      		OR T.DOC_TITLE LIKE '%' || #{keyword} || '%'
+		      		OR T.DEPT_NM LIKE '%' || #{keyword} || '%'
+		      		)
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+		
+	</select>
+	
+	<select id="reportList" parameterType="hashMap" resultMap="sanctionDocMap">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.DOC_NO DESC) RNUM
+		         , T.*, D.DEPT_NM, D.DEPT_NO
+		    FROM
+		    (
+		        SELECT DOC_NO, A.USER_NO, DOC_TITLE, DOC_CONTENT, DOC_CREATE_DATE, DOC_TYPE_NO
+		             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+		             , A.FILE_GROUP_NO, A.FILE_SAVE_LOCATE, A.FILE_ORIGINAL_NAME
+		        FROM (
+			        SELECT *
+			        FROM SANCTION_DOC X LEFT OUTER JOIN FILE_GROUP Y ON(X.FILE_GROUP_NO = Y.FILE_GROUP_NO)
+			                			LEFT OUTER JOIN FILE_DETAIL Z ON(Y.FILE_GROUP_NO = Z.FILE_GROUP_NO)
+			    ) A
+			        WHERE DOC_TYPE_NO = '4'        			
+		         
+		    ) T, EMPLOYEE E, DEPT D
+		    WHERE T.USER_NO = E.USER_NO
+		    AND E.DEPT_NO = D.DEPT_NO
+		    <include refid="where"></include>
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	
+	<!-- map: {currentPage=1, keyword=} -->
+	<select id="total" parameterType="hashMap" resultType="int">
+		SELECT count(*)
+	    FROM
+	    (
+	        SELECT DOC_NO, A.USER_NO, DOC_TITLE, DOC_CONTENT, DOC_CREATE_DATE, DOC_TYPE_NO
+	             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+	             , A.FILE_GROUP_NO, A.FILE_SAVE_LOCATE
+	        FROM (
+		        SELECT *
+		        FROM SANCTION_DOC X LEFT OUTER JOIN FILE_GROUP Y ON(X.FILE_GROUP_NO = Y.FILE_GROUP_NO)
+		                LEFT OUTER JOIN FILE_DETAIL Z ON(Y.FILE_GROUP_NO = Z.FILE_GROUP_NO)
+		    ) A
+	         
+	    ) T, EMPLOYEE E, DEPT D
+	    WHERE T.USER_NO = E.USER_NO
+	    AND E.DEPT_NO = D.DEPT_NO
+	    
+	    <include refid="where"></include>
+	</select>
+	
+	<select id="mysancTotal" parameterType="hashMap" resultType="int">
+		SELECT count(*)
+	    FROM
+	    (
+	        
+	        SELECT T.*, A.DOC_TITLE, A.USER_NM, A.DOC_TYPE_NM, A.DOC_CREATE_DATE, A.DEPT_NM
+                 FROM
+                    (SELECT S.DOC_NO, SANCTION_NO, SANCTION_USER, SANCTION_DATE, S.SANCTION_LINE_TYPE, S.SANCTION_STATUS_NO
+                            , SANCTION_LINE_NM
+                            , SANCTION_TYPE_NM
+                            , SANCTION_STATUS_NM
+                    FROM SANCTION S INNER JOIN SANCTION_LINE SL ON(S.SANCTION_LINE_TYPE = SL.SANCTION_LINE_TYPE)
+                                    INNER JOIN SANCTION_TYPE ST ON(S.SANCTION_TYPE_NO = ST.SANCTION_TYPE_NO)
+                                    INNER JOIN SANCTION_STATUS SS ON (S.SANCTION_STATUS_NO = SS.SANCTION_STATUS_NO)
+                	) T, 
+                    (SELECT USER_NM, DOC_TITLE, DOC_NO, DOC_TYPE_NM, DOC_CREATE_DATE, DEPT_NM 
+                     FROM SANCTION_DOC S, TB_USER TU, DOC_TYPE DT, EMPLOYEE E, DEPT D
+                     WHERE S.USER_NO = TU.USER_NO
+                     AND S.USER_NO = E.USER_NO
+                     AND E.DEPT_NO = D.DEPT_NO
+                     AND S.DOC_TYPE_NO = DT.DOC_TYPE_NO                     
+                     ) A
+                
+                WHERE T.DOC_NO = A.DOC_NO
+                AND T.SANCTION_USER =  #{userId}
+                AND T.SANCTION_STATUS_NO = '1'
+		        AND (A.DEPT_NM LIKE '%' || #{keyword} || '%'
+				      OR A.DOC_TITLE LIKE '%' || #{keyword} || '%'
+				      OR A.USER_NM LIKE '%' || #{keyword} || '%'
+				    )
+		) 
+		
+	</select>
+	<select id="pendingTotal" parameterType="hashMap" resultType="int">
+		SELECT count(*)
+	    FROM
+	    (
+	        SELECT T.*, A.DOC_TITLE, A.USER_NM, A.DOC_TYPE_NM, A.DEPT_NM
+                 FROM
+                    (SELECT S.DOC_NO, SANCTION_NO, SANCTION_USER, SANCTION_DATE, S.SANCTION_LINE_TYPE, S.SANCTION_STATUS_NO
+                            , SANCTION_LINE_NM
+                            , SANCTION_TYPE_NM
+                            , SANCTION_STATUS_NM
+                    FROM SANCTION S INNER JOIN SANCTION_LINE SL ON(S.SANCTION_LINE_TYPE = SL.SANCTION_LINE_TYPE)
+                                    INNER JOIN SANCTION_TYPE ST ON(S.SANCTION_TYPE_NO = ST.SANCTION_TYPE_NO)
+                                    INNER JOIN SANCTION_STATUS SS ON (S.SANCTION_STATUS_NO = SS.SANCTION_STATUS_NO)
+                	) T, 
+                    (SELECT USER_NM, DOC_TITLE, DOC_NO, DOC_TYPE_NM, DOC_CREATE_DATE, DEPT_NM 
+                     FROM SANCTION_DOC S, TB_USER TU, DOC_TYPE DT, EMPLOYEE E, DEPT D
+                     WHERE S.USER_NO = TU.USER_NO
+                     AND S.USER_NO = E.USER_NO
+                     AND E.DEPT_NO = D.DEPT_NO
+                     AND S.DOC_TYPE_NO = DT.DOC_TYPE_NO                     
+                     ) A
+                
+                WHERE T.DOC_NO = A.DOC_NO
+                AND T.SANCTION_USER =  #{userId}
+                AND T.SANCTION_STATUS_NO = '1'
+	    		AND (A.DEPT_NM LIKE '%' || #{keyword} || '%'
+				      OR A.DOC_TITLE LIKE '%' || #{keyword} || '%'
+				      OR A.USER_NM LIKE '%' || #{keyword} || '%'
+				    )
+		)
+	</select>
+	
+	<select id="reportTotal" parameterType="hashMap" resultType="int">
+		SELECT count(*)
+	    FROM
+	    (
+	        SELECT DOC_NO, A.USER_NO, DOC_TITLE, DOC_CONTENT, DOC_CREATE_DATE, DOC_TYPE_NO
+	             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+	             , A.FILE_GROUP_NO, A.FILE_SAVE_LOCATE
+	        FROM (
+		        SELECT *
+		        FROM SANCTION_DOC X LEFT OUTER JOIN FILE_GROUP Y ON(X.FILE_GROUP_NO = Y.FILE_GROUP_NO)
+		                			LEFT OUTER JOIN FILE_DETAIL Z ON(Y.FILE_GROUP_NO = Z.FILE_GROUP_NO)
+		    ) A
+		        WHERE DOC_TYPE_NO = '4'
+	         
+	    ) T, EMPLOYEE E, DEPT D
+	    WHERE T.USER_NO = E.USER_NO
+	    AND E.DEPT_NO = D.DEPT_NO
+	    
+	    <include refid="where"></include>
+	</select>
+	
+	<insert id="createPost" parameterType="kr.or.ddit.sanction.jw.vo.SanctionDocVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="docNo">
+			SELECT NVL(MAX(DOC_NO),0)+1 FROM SANCTION_DOC
+		</selectKey>
+	
+		INSERT INTO SANCTION_DOC(DOC_NO, DOC_TITLE, DOC_CONTENT, DOC_CREATE_DATE, DOC_TYPE_NO, DOC_STATUS, USER_NO
+		<if test="fileGroupNo != null and fileGroupNo != ''">
+		,FILE_GROUP_NO
+		</if>
+		 )
+		VALUES(#{docNo},#{docTitle},#{docContent},SYSDATE,#{docTypeNo},'1', #{userId}
+		<if test="fileGroupNo != null and fileGroupNo != ''">
+		,#{fileGroupNo}
+		</if>
+		)
+	</insert>
+	
+	<insert id="createSanctionLine" parameterType="List">
+        <foreach collection="list" item="sanctionVO" index="index"  open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+        	INTO SANCTION(DOC_NO, SANCTION_USER, SANCTION_LINE_TYPE, SANCTION_TYPE_NO,SANCTION_STATUS_NO,SANCTION_NO)
+            VALUES(#{sanctionVO.docNo}, #{sanctionVO.sanctionUser}, #{sanctionVO.sanctionLineType}
+             , #{sanctionVO.sanctionTypeNo},'1',#{sanctionVO.sanctionNo})
+        </foreach>
+	</insert>
+	
+	<!-- 
+	INSERT ALL
+	INTO RECEIVE (DOC_NO, DEPT_NO) VALUES(2, '1') 
+	INTO RECEIVE (DOC_NO, DEPT_NO) VALUES(2, '2') 
+	INTO RECEIVE (DOC_NO, DEPT_NO) VALUES(2, '3') 
+	SELECT * FROM DUAL
+	 -->
+	<insert id="createSanctionReceive" parameterType="List">
+        <foreach collection="list" item="receiveVO" index="index"  open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+            INTO RECEIVE (DOC_NO, DEPT_NO)
+            VALUES(#{receiveVO.docNo}, #{receiveVO.deptNo})
+        </foreach>
+	</insert>
+	
+	<select id="detail" parameterType="int" resultMap="sanctionDocMap">
+		SELECT D.DOC_NO, D.USER_NO, D.DOC_TITLE, D.DOC_CONTENT, D.DOC_CREATE_DATE, D.FILE_GROUP_NO
+		    , D.DOC_TYPE_NO
+		    , (SELECT DT.DOC_TYPE_NM FROM DOC_TYPE DT WHERE DT.DOC_TYPE_NO = D.DOC_TYPE_NO) DOC_TYPE_NM
+		    , D.DOC_STATUS
+		    , (SELECT T.USER_NM FROM TB_USER T WHERE T.USER_NO = E.USER_NO) USER_NM
+		    , P.DEPT_NM
+		    , S.SANCTION_NO, S.SANCTION_USER, S.SANCTION_STATUS_NO,S.SANCTION_DATE
+		    , (SELECT USER_NM FROM TB_USER T WHERE S.SANCTION_USER = T.USER_NO) SANCTION_USER_NM
+            , (SELECT FILE_SAVE_LOCATE FROM FILE_DETAIL Q, (SELECT USER_SIGN FROM TB_USER T WHERE S.SANCTION_USER = T.USER_NO) W
+                WHERE Q.FILE_GROUP_NO = W.USER_SIGN) SANCTION_USER_SIGN
+		    , S.SANCTION_DATE, S.SANCTION_TYPE_NO, S.SANCTION_LINE_TYPE
+		    , (SELECT Y.SANCTION_TYPE_NM FROM SANCTION_TYPE Y WHERE S.SANCTION_TYPE_NO = Y.SANCTION_TYPE_NO) SANCTION_TYPE_NM
+		    , (SELECT POSITION_NM FROM POSITION P WHERE S.SANCTION_USER = E.USER_NO AND E.POSITION_NO = P.POSITION_NO) SANCTION_USER_POSITION
+		    , (SELECT L.SANCTION_LINE_NM FROM SANCTION_LINE L WHERE S.SANCTION_LINE_TYPE = L.SANCTION_LINE_TYPE) SANCTION_LINE_NM
+		FROM  SANCTION_DOC  D
+		    , SANCTION      S
+		    , FILE_GROUP    F
+		    , EMPLOYEE      E
+		    , DEPT P
+		WHERE D.DOC_NO = S.DOC_NO
+		    AND D.USER_NO = E.USER_NO
+		    AND D.FILE_GROUP_NO = F.FILE_GROUP_NO
+		    AND E.DEPT_NO = P.DEPT_NO
+		    AND D.DOC_NO  = #{docNo}
+	
+	</select>
+	
+	<select id="receive" parameterType="int" resultMap="sanctionDocMap">
+		SELECT s.doc_no, r.dept_no, dept_nm receive_dept_nm
+		FROM  sanction_doc s
+		    , receive r
+		    , dept d
+		WHERE s.doc_no = r.doc_no
+		    AND r.dept_no = d.dept_no
+		    AND s.doc_no = #{deptNo}
+	</select>
+	
+	<select id="fileGroup" parameterType="int" resultMap="sanctionDocMap">
+		SELECT S.FILE_GROUP_NO, FILE_ORIGINAL_NAME, FILE_SAVE_LOCATE
+		FROM  SANCTION_DOC S
+		     , FILE_GROUP G
+		     , FILE_DETAIL D
+		WHERE S.FILE_GROUP_NO = G.FILE_GROUP_NO
+		    AND G.FILE_GROUP_NO = D.FILE_GROUP_NO
+		    AND S.DOC_NO = #{deptNo}
+	</select>
+	
+	<update id="approve" parameterType="hashMap">
+		UPDATE SANCTION
+		SET SANCTION_STATUS_NO = 2
+			,SANCTION_DATE = SYSDATE
+		WHERE DOC_NO = #{docNo}
+	    AND SANCTION_USER = #{sanctionUser} 	
+	</update>
+	
+	<update id="sanctionReject" parameterType="hashMap">
+		UPDATE SANCTION
+		SET SANCTION_STATUS_NO = 3
+			,SANCTION_DATE = SYSDATE
+		WHERE DOC_NO = #{docNo}
+	    AND SANCTION_USER = #{sanctionUser} 	
+	</update>
+	
+	<update id="docReject" parameterType="hashMap">
+		UPDATE SANCTION_DOC
+		SET DOC_REJECT = #{docReject}	
+		WHERE DOC_NO = #{docNo}
+	</update>
+	
+	<select id="getDept" parameterType="String" resultType="int">
+		SELECT DEPT_NO
+		FROM EMPLOYEE
+		WHERE USER_NO = #{userId}
+	</select>
+	
+	<resultMap type="kr.or.ddit.sanction.jw.vo.SanctionDocVO" id="sanctionDocMap">
+		<result property="docNo" column="DOC_NO"/>
+		<result property="userNo" column="USER_NO"/>
+		<result property="docTitle" column="DOC_TITLE"/>
+		<result property="docContent" column="DOC_CONTENT"/>
+		<result property="docCreateDate" column="DOC_CREATE_DATE"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="docTypeNo" column="DOC_TYPE_NO"/>
+		<result property="docTypeNm" column="DOC_TYPE_NM"/>
+		<result property="docStatus" column="DOC_STATUS"/>
+ 		<result property="rnum" column="Rnum"/> 
+		<result property="userNm" column="USER_NM"/>
+		
+		<association property="fileGroupVO" resultMap="fileGroupMap"></association>
+		<association property="employeeVO" resultMap="employeeMap"></association>
+		<collection property="sanctionVOList" resultMap="sanctionMap"></collection>
+		<collection property="receiveVOList" resultMap="receiveDeptMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.sanction.jw.vo.SanctionVO" id="sanctionMap">
+		<result property="sanctionStatusNo" column="SANCTION_STATUS_NO"/>
+		<result property="docNo" column="DOC_NO"/>
+		<result property="sanctionTypeNo" column="SANCTION_TYPE_NO"/>
+		<result property="sanctionTypeNm" column="SANCTION_TYPE_NM"/>
+		<result property="sanctionNo" column="SANCTION_NO"/>
+		<result property="sanctionUser" column="SANCTION_USER"/>
+		<result property="sanctionDate" column="SANCTION_DATE"/>
+		<result property="sanctionLineType" column="SANCTION_LINE_TYPE"/>
+		<result property="sanctionLineNm" column="SANCTION_LINE_NM"/>
+		<result property="sanctionUserNm" column="SANCTION_USER_NM"/>
+		<result property="sanctionUserPosition" column="SANCTION_USER_POSITION"/>
+		<result property="sanctionUserSign" column="SANCTION_USER_SIGN"/>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.EmployeeVO" id="employeeMap">
+		<result property="userNo" column="USER_NO"/>
+		<result property="positionNo" column="POSITION_NO"/>
+		<result property="empManager" column="EMP_MANAGER"/>
+		<result property="deptNo" column="DEPT_NO"/>
+		<result property="deptNm" column="DEPT_NM"/>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileGroupVO" id="fileGroupMap">
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileGroupNm" column="FILE_GROUP_NM"/>
+		<result property="fileRegdate" column="FILE_REGDATE"/>
+		<result property="fileGroupTy" column="FILE_GROUP_TY"/>
+		<collection property="fileDetailVOList" resultMap="fileDetailMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileDetailVO" id="fileDetailMap">
+		<result property="fileNo" column="FILE_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileOriginalName" column="FILE_ORIGINAL_NAME"/>
+		<result property="fileSaveName" column="FILE_SAVE_NAME"/>
+		<result property="fileExt" column="FILE_EXT"/>
+		<result property="fileSize" column="FILE_SIZE"/>
+		<result property="fileSaveLocate" column="FILE_SAVE_LOCATE"/>
+		<result property="fileMime" column="FILE_MIME"/>
+		<result property="fileFancysize" column="FILE_FANCYSIZE"/>
+		<result property="fileSaveDate" column="FILE_SAVE_DATE"/>
+		<result property="fileDowncount" column="FILE_DOWNCOUNT"/>
+	</resultMap>
+
+	<resultMap type="kr.or.ddit.sanction.jw.vo.ReceiveVO" id="receiveDeptMap">
+		<result property="docNo" column="DOC_NO"/>
+		<result property="deptNo" column="DEPT_NO"/>
+		<result property="receiveDeptNm" column="RECEIVE_DEPT_NM"/>
+	</resultMap>
+	
+	
+</mapper>

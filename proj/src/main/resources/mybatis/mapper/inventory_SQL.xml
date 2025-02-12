@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.inventory.jw.mapper.InventoryMapper">
+
+	<sql id="where">
+		<if test="keyword!=null and keyword!=''">
+			AND (T.ITEM_NM LIKE '%' || #{keyword} || '%'
+		    )
+		</if>
+	</sql>
+
+	
+	<select id="inventoryList" parameterType="hashMap" resultType="kr.or.ddit.vo.ItemVO">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.ITEM_NO) RNUM
+		         , T.*
+		    FROM
+		    (
+		       SELECT M.ITEM_NO, ITEM_NM, SALE_PRICE, SAFETY_AMOUNT, ITEM_DEL
+		        , SUM(CASE WHEN REMAIN_AMOUNT > 0 THEN REMAIN_AMOUNT ELSE 0 END) REMAIN_AMOUNT
+		        , MIN(CASE 
+		                WHEN RECORD_TY = 1
+		                AND EXP_DATE > SYSDATE
+		                AND REMAIN_AMOUNT > 0
+		                THEN EXP_DATE 
+		                ELSE NULL
+		                END
+		               ) 
+         		 EXP_DATE
+       			 , ROUND(AVG(CASE WHEN RECORD_TY = 1 THEN RECORD_ITEM_PRICE END),2) AS AVG_PURCHASE_PRICE 
+			FROM ITEM M LEFT OUTER JOIN INVNTRY_RECORD R ON M.ITEM_NO = R.ITEM_NO
+			GROUP BY M.ITEM_NO, ITEM_NM, SALE_PRICE, SAFETY_AMOUNT, ITEM_DEL
+			) T	
+		    <include refid="where"></include>
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	
+	<select id="inventoryDetailList" parameterType="hashMap" resultType="kr.or.ddit.inventory.jw.vo.InventoryVO">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.EXP_DATE DESC) RNUM
+		         , T.*
+		    FROM
+		    (
+		       SELECT D.ITEM_NO, ITEM_NM, USER_NO, SALE_PRICE, RECORD_AMOUNT, REMAIN_AMOUNT
+		       		, EXP_DATE, D.HEAD_ORDER_NO, RECORD_ITEM_PRICE, RECORD_REG_DATE
+			   FROM INVNTRY_RECORD D JOIN ITEM M ON D.ITEM_NO = M.ITEM_NO
+                    				 LEFT OUTER JOIN HEAD_ORDER H ON D.HEAD_ORDER_NO = H.HEAD_ORDER_NO
+			   WHERE RECORD_TY = 1
+				AND M.ITEM_NO = #{itemNo}
+			) T	
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	<select id="inventoryOutgoingList" parameterType="hashMap" resultType="kr.or.ddit.inventory.jw.vo.InventoryVO">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.STORE_ORDER_NO) RNUM
+		         , T.*
+		    FROM
+		    (
+		       SELECT M.ITEM_NO, ITEM_NM, SALE_PRICE, ITEM_DEL, EXP_DATE, R.STORE_ORDER_NO, STORE_NM, RECORD_REG_DATE, RECORD_AMOUNT
+				FROM ITEM M LEFT OUTER JOIN INVNTRY_RECORD R ON M.ITEM_NO = R.ITEM_NO
+				            JOIN STORE_ORDER SO ON R.STORE_ORDER_NO = SO.STORE_ORDER_NO
+				            JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+				WHERE RECORD_TY= 2
+				AND M.ITEM_NO = #{itemNo}
+			) T	
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	
+	
+	<select id="inventoryTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+	    FROM
+	    (
+	        SELECT M.ITEM_NO, ITEM_NM, SALE_PRICE, SAFETY_AMOUNT, ITEM_DEL
+		        , SUM(CASE WHEN REMAIN_AMOUNT > 0 THEN REMAIN_AMOUNT ELSE 0 END) REMAIN_AMOUNT
+		        , MIN(CASE 
+		                WHEN RECORD_TY = 1
+		                AND EXP_DATE > SYSDATE
+		                AND REMAIN_AMOUNT > 0
+		                THEN EXP_DATE 
+		                ELSE NULL
+		                END
+		               ) 
+         		 EXP_DATE
+       			 , ROUND(AVG(CASE WHEN RECORD_TY = 1 THEN RECORD_ITEM_PRICE END),2) AS AVG_PURCHASE_PRICE 
+			FROM ITEM M LEFT OUTER JOIN INVNTRY_RECORD R ON M.ITEM_NO = R.ITEM_NO
+			GROUP BY M.ITEM_NO, ITEM_NM, SALE_PRICE, SAFETY_AMOUNT, ITEM_DEL   
+	    ) T
+	   
+	    <include refid="where"></include>
+	</select>
+	
+	<select id="inventoryDetailTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+	    FROM
+	    (
+	       SELECT D.ITEM_NO, ITEM_NM, USER_NO, SALE_PRICE, RECORD_AMOUNT, REMAIN_AMOUNT
+		       		, EXP_DATE, D.HEAD_ORDER_NO, RECORD_ITEM_PRICE, RECORD_REG_DATE
+			   FROM INVNTRY_RECORD D JOIN ITEM M ON D.ITEM_NO = M.ITEM_NO
+                    				 LEFT OUTER JOIN HEAD_ORDER H ON D.HEAD_ORDER_NO = H.HEAD_ORDER_NO
+			   WHERE RECORD_TY = 1
+				AND M.ITEM_NO = #{itemNo}
+	    ) T
+	   
+	</select>
+	<select id="inventoryOutgoingTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+	    FROM
+	    (
+	       SELECT M.ITEM_NO, ITEM_NM, SALE_PRICE, ITEM_DEL, EXP_DATE, R.STORE_ORDER_NO, STORE_NM, RECORD_REG_DATE, RECORD_AMOUNT
+				FROM ITEM M LEFT OUTER JOIN INVNTRY_RECORD R ON M.ITEM_NO = R.ITEM_NO
+				            JOIN STORE_ORDER SO ON R.STORE_ORDER_NO = SO.STORE_ORDER_NO
+				            JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+				WHERE RECORD_TY= 2
+				AND M.ITEM_NO = #{itemNo}
+	    ) T
+	   
+	</select>
+	<select id="getItem"  resultType="kr.or.ddit.vo.ItemVO">
+		SELECT ITEM_NO, ITEM_NM FROM ITEM
+	   
+	</select>
+
+	
+	<insert id="create" parameterType="List" >
+		
+		<foreach collection="list" item="InventoryVO" index="index" open="INSERT ALL"  close="SELECT * FROM DUAL">
+			INTO INVNTRY_RECORD(INVNTRY_RECORD_NO, ITEM_NO, RECORD_TY, RECORD_AMOUNT, RECORD_REG_DATE
+								, RECORD_ITEM_PRICE,  HEAD_ORDER_NO, EXP_DATE, REMAIN_AMOUNT)
+				 VALUES((SELECT NVL(MAX(INVNTRY_RECORD_NO),0)+#{index}+1 FROM INVNTRY_RECORD), #{InventoryVO.itemNo}, '1', #{InventoryVO.recordAmount}, SYSDATE
+				 		, #{InventoryVO.recordItemPrice}, #{InventoryVO.headOrderNo},#{InventoryVO.expDate},#{InventoryVO.recordAmount}
+				 )
+		</foreach>
+	
+	</insert>
+
+	
+	<!-- 계산서 발행시 출고 insert -->
+	<insert id="insertInventory" parameterType="kr.or.ddit.inventory.jw.vo.InventoryVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="invntryRecordNo">
+			SELECT NVL(MAX(INVNTRY_RECORD_NO),0)+1 
+			FROM INVNTRY_RECORD
+		</selectKey>
+		
+		INSERT INTO INVNTRY_RECORD (
+			INVNTRY_RECORD_NO, ITEM_NO, RECORD_TY, RECORD_AMOUNT, RECORD_REG_DATE
+			, RECORD_ITEM_PRICE, STORE_ORDER_NO
+		)
+		VALUES (
+			#{invntryRecordNo}, #{itemNo}, 2, #{recordAmount}, #{recordRegDate}
+			, #{recordItemPrice}, #{storeOrderNo}
+		)
+	</insert>
+
+	<update id="updateSafetyAmount" parameterType="list">
+	    UPDATE ITEM 
+	    SET SAFETY_AMOUNT = CASE 
+	        <foreach collection="list" item="itemVO">
+	            WHEN ITEM_NO = #{itemVO.itemNo} THEN #{itemVO.safetyAmount}
+	        </foreach>
+	    END
+	    WHERE ITEM_NO IN 
+	    <foreach collection="list" item="itemVO" open="(" separator="," close=")">
+	        #{itemVO.itemNo}
+	    </foreach>
+	</update>
+	
+	<!-- 
+	INVNTRY_RECORD 테이블에서 특정 ITEM_NO 컬럼의 값에 대한 조건과 RECORD_TY = 1인
+    //	데이터의 RECORD_AMOUNT 값을 REMAIN_AMOUNT 값으로 초기화 한 후 아래의 프로시저를 실행함
+	public int preExcProcAutoExpDate(InventoryVO inventoryVO)
+	 -->
+	<update id="preExcProcAutoExpDate" parameterType="kr.or.ddit.inventory.jw.vo.InventoryVO">
+		UPDATE INVNTRY_RECORD B 
+		SET    B.REMAIN_AMOUNT = (
+		    SELECT A.RECORD_AMOUNT
+		    FROM  INVNTRY_RECORD A
+		    WHERE A.ITEM_NO = #{itemNo}
+		    AND   A.RECORD_TY = 1
+		    AND   A.INVNTRY_RECORD_NO = B.INVNTRY_RECORD_NO
+		)
+		WHERE B.ITEM_NO = #{itemNo}
+		AND   B.RECORD_TY = 1
+	</update>
+	
+	<!-- 
+	출고 insert 시 유통기한 자동으로 입력되는 프로시저(PROC_AUTO_EXP_DATE(P_ITEM_NO IN NUMBER)) 실행
+	public int excProcAutoExpDate(InventoryVO inventoryVO)
+	
+	/*
+     inventoryVO : InventoryVO(expDate=null, invntryRecordNo=517, itemNo=1
+     , recordTy=2, recordAmount=0, recordRegDate=Tue Feb 04 00:00:00 KST 2025
+     , recordItemPrice=0, storeOrderNo=379, headOrderNo=0, remainAmount=0, rnum=0
+     , safetyAmount=0, itemNm=null, itemAmount=0, salePrice=0, userNo=null
+     , userNm=null, storeNm=null)
+     */
+	 -->
+	<update id="excProcAutoExpDate" statementType="CALLABLE" parameterType="kr.or.ddit.inventory.jw.vo.InventoryVO">
+	    {call PROC_AUTO_EXP_DATE(#{itemNo, mode=IN})}
+	</update>
+	 
+	<!--  
+	<select id="detail" parameterType="hashMap" resultMap="resourceMap2">
+		SELECT DENSE_RANK() OVER(ORDER BY T.BOARD_NO DESC) RNUM
+		         , T.*, D.DEPT_NM
+		    FROM
+		    (
+		        SELECT A.BOARD_NO, A.BOARD_CODE_NO, A.BOARD_TITLE, A.BOARD_CN, A.BOARD_REG_DATE
+		             , A.BOARD_CNT, A.BOARD_STATUS, A.USER_NO
+		             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+		             , A.FILE_GROUP_NO, A.BOARD_START
+		             , A.BOARD_END, A.FILE_SAVE_LOCATE, A.FILE_ORIGINAL_NAME
+		        FROM (
+			        SELECT *
+			        FROM   BOARD X LEFT OUTER JOIN FILE_GROUP Y ON(X.FILE_GROUP_NO = Y.FILE_GROUP_NO)
+			                LEFT OUTER JOIN FILE_DETAIL Z ON(Y.FILE_GROUP_NO = Z.FILE_GROUP_NO)
+			    ) A
+		        WHERE A.BOARD_CODE_NO = 3    
+		    ) T, EMPLOYEE E, DEPT D
+		    WHERE T.USER_NO = E.USER_NO
+		    AND E.DEPT_NO = D.DEPT_NO
+		    AND BOARD_STATUS = 1
+		    and BOARD_NO = #{boardNo}
+	</select>
+	
+	<update id="update" parameterType="kr.or.ddit.resource.jw.vo.ResourceVO" >
+		UPDATE BOARD
+		SET BOARD_CN = #{boardCn}
+			<if test="fileGroupNo != null and fileGroupNo != ''">
+			,FILE_GROUP_NO = #{fileGroupNo}
+			</if>
+		WHERE BOARD_NO = #{boardNo}
+	</update>
+	
+	
+	 -->
+		
+</mapper>

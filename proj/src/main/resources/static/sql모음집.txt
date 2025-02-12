@@ -1,0 +1,149 @@
+1. ITEM 테이블의 ITEM_NO를 입력하여 자동 IN/OUT 처리
+/
+DECLARE
+    /*
+    ITEM 테이블의 ITEM_NO를 입력하여 자동 IN/OUT 처리
+    OUT의 ITEM 테이블의 ITEM_EXP의 경우 차후에 계산처리 해야함
+    */
+    V_INVNTRY_RECORD_NO NUMBER;
+    V_IN NUMBER;
+    V_OUT NUMBER;
+    V_DT NUMBER;
+    V_ITEM_NO NUMBER;
+    V_ITEM_EXP NUMBER;
+    J NUMBER;
+BEGIN
+    
+    --1	디카페인원두(1kg)	10000	15000	1		60
+    --*******
+    V_ITEM_NO := 7;
+    
+    --기본키 MAX값
+    SELECT NVL(MAX(INVNTRY_RECORD_NO),0) INTO V_INVNTRY_RECORD_NO
+    FROM    INVNTRY_RECORD;
+    
+    /*
+        1	디카페인원두(1kg)	10000	15000	1		60
+        2	에스프레소원두(1kg)	10000	15000	1		60
+        3	콜드브루농축액(1kg)	30000	40000	1		300
+        4	복숭아농축액(1kg)	12000	20000	1		300
+        5	키위농축액(1kg)	12000	20000	1		300
+        6	오렌지농축액(1kg)	12000	20000	1		300
+        7	샤인머스캣농축액(1kg)	12000	20000	1		300
+    */
+    --RECORD_TY : 1 (들어옴)
+    
+    --선택된 ITEM_NO에 해당되는 유통기한일자
+    SELECT ITEM_EXP INTO V_ITEM_EXP
+    FROM   ITEM 
+    WHERE  ITEM_NO = V_ITEM_NO;
+    
+    FOR I IN 1..10 LOOP
+        --들어오는 상품의 랜덤 개수
+        SELECT TRUNC(DBMS_RANDOM.VALUE(2,31))*10 INTO V_IN FROM DUAL;
+        --오늘부터 -90일까지 랜덤 일자
+        SELECT TRUNC(DBMS_RANDOM.VALUE(2,90)) INTO V_DT FROM DUAL;
+    
+        INSERT INTO INVNTRY_RECORD(INVNTRY_RECORD_NO, ITEM_NO, RECORD_TY, RECORD_AMOUNT, RECORD_REG_DATE
+            , RECORD_ITEM_PRICE, STORE_ORDER_NO, HEAD_ORDER_NO, EXP_DATE)
+        VALUES(V_INVNTRY_RECORD_NO+I, V_ITEM_NO, 1, V_IN, SYSDATE-V_DT, (SELECT ITEM_PRICE FROM ITEM WHERE ITEM_NO = V_ITEM_NO),NULL,
+            (SELECT NVL(MAX(HEAD_ORDER_NO),0)+1 FROM INVNTRY_RECORD WHERE RECORD_TY = 1), 
+            (SYSDATE-V_DT+V_ITEM_EXP));  
+            
+        J := I;
+    END LOOP;
+    
+    FOR I IN (J+1)..(J+6) LOOP
+        --나가는 상품의 랜덤 개수
+        SELECT TRUNC(DBMS_RANDOM.VALUE(2,10))*10 INTO V_OUT FROM DUAL;
+        --오늘부터 -90일까지 랜덤 일자
+        SELECT TRUNC(DBMS_RANDOM.VALUE(2,90)) INTO V_DT FROM DUAL;
+    
+        INSERT INTO INVNTRY_RECORD(INVNTRY_RECORD_NO, ITEM_NO, RECORD_TY, RECORD_AMOUNT, RECORD_REG_DATE
+            , RECORD_ITEM_PRICE, STORE_ORDER_NO, HEAD_ORDER_NO, EXP_DATE)
+        VALUES(V_INVNTRY_RECORD_NO+I, V_ITEM_NO, 2, V_OUT, SYSDATE-V_DT, (SELECT SALE_PRICE FROM ITEM WHERE ITEM_NO = V_ITEM_NO),
+            (SELECT NVL(MAX(STORE_ORDER_NO),0)+1 FROM INVNTRY_RECORD WHERE RECORD_TY = 2),
+            NULL, 
+            NULL);       
+    END LOOP;
+    
+    COMMIT;
+END;
+/
+
+
+
+/
+SET SERVEROUTPUT ON;
+/
+DECLARE
+    V_INVNTRY_RECORD_NO NUMBER;
+    V_REMAIN_AMOUNT NUMBER;
+    V_EXP_DATE DATE;
+    RNUM1_EXP_DATE DATE;
+    V_RNUM NUMBER := 1;
+    V_RECORD_AMOUNT NUMBER;
+
+    CURSOR CUR 
+    IS
+        SELECT INVNTRY_RECORD_NO, ITEM_NO, RECORD_TY, RECORD_AMOUNT, RECORD_REG_DATE
+             , RECORD_ITEM_PRICE, STORE_ORDER_NO, HEAD_ORDER_NO, EXP_DATE, REMAIN_AMOUNT
+        FROM   INVNTRY_RECORD
+        WHERE  ITEM_NO = 2
+        AND    RECORD_TY = 2
+        ORDER BY RECORD_REG_DATE;
+BEGIN
+    FOR R IN CUR LOOP
+        V_RECORD_AMOUNT := R.RECORD_AMOUNT;
+        V_RNUM := 1;
+        
+        LOOP
+            WITH U AS(
+                SELECT ROW_NUMBER() OVER(ORDER BY T.RECORD_REG_DATE) RNUM
+                     , T.*
+                FROM 
+                (
+                    SELECT INVNTRY_RECORD_NO, REMAIN_AMOUNT, EXP_DATE, RECORD_REG_DATE-- INTO V_INVNTRY_RECORD_NO, V_REMAIN_AMOUNT, V_EXP_DATE
+                    FROM   INVNTRY_RECORD
+                    WHERE  ITEM_NO = 2
+                    AND    RECORD_TY = 1
+                    AND    REMAIN_AMOUNT > 0
+                ) T
+            )
+            SELECT U.INVNTRY_RECORD_NO, U.REMAIN_AMOUNT, U.EXP_DATE
+                INTO V_INVNTRY_RECORD_NO, V_REMAIN_AMOUNT, V_EXP_DATE
+            FROM  U
+            WHERE U.RNUM = V_RNUM;
+            
+            DBMS_OUTPUT.PUT_LINE(V_INVNTRY_RECORD_NO || ', ' || V_REMAIN_AMOUNT || ', ' || V_EXP_DATE);
+            
+            IF V_RNUM = 1 THEN
+                RNUM1_EXP_DATE := V_EXP_DATE;
+            END IF;
+            
+            --   -50        =           20         - 70
+            --   190           =           240      - 50
+            V_REMAIN_AMOUNT := V_REMAIN_AMOUNT - V_RECORD_AMOUNT;
+            --   -50                  -50
+            --    190                   190
+            V_RECORD_AMOUNT := V_REMAIN_AMOUNT;
+            
+            UPDATE INVNTRY_RECORD
+            SET    REMAIN_AMOUNT = V_REMAIN_AMOUNT
+                 , EXP_DATE = V_EXP_DATE
+            WHERE  INVNTRY_RECORD_NO = V_INVNTRY_RECORD_NO;
+            
+            V_RNUM := V_RNUM + 1;
+            
+            IF V_REMAIN_AMOUNT >= 0 THEN
+                EXIT;
+            END IF;
+        END LOOP;
+    END LOOP;
+END;
+/
+
+
+
+
+

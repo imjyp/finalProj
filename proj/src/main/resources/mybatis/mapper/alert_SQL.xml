@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.alert.jy.mapper.AlertMapper">
+	
+	<!-- 알림 생성 -->
+    <insert id="insertAlert" parameterType="kr.or.ddit.vo.AlertVO">
+    	<selectKey resultType="int" order="BEFORE" keyProperty="alertNo">
+			SELECT NVL(MAX(ALERT_NO),0)+1
+			FROM ALERT
+		</selectKey>
+		
+        INSERT INTO ALERT (ALERT_NO, ALERT_CN, ALERT_CHK, ALERT_CREATE, ALERT_TY, USER_NO, ALERT_PK, ALERT_URL, ALERT_FILE)
+        VALUES (#{alertNo}, #{alertCn}, 1, #{alertCreate}, #{alertTy}, #{userNo}, #{alertPk}, #{alertUrl}, 1)
+    </insert>
+
+	<!-- 알람 목록 전체 행 개수 -->
+    <select id="total" resultType="int">
+    	SELECT COUNT(*)
+		FROM ALERT
+		WHERE 1 = 1	
+    </select>
+    
+    <!-- 특정 사용자에 대한 알림 목록 조회 -->
+    <select id="userAlertList" resultType="kr.or.ddit.vo.AlertVO">
+        SELECT *
+		FROM (
+		    SELECT ROW_NUMBER() OVER (ORDER BY ALERT_CREATE DESC) AS RNUM
+		        , ALERT_NO, ALERT_CN, ALERT_CHK, ALERT_CREATE, ALERT_TY, USER_NO, ALERT_PK,  ALERT_URL, ALERT_FILE
+		    FROM ALERT
+		    WHERE USER_NO = #{userNo}
+		) 
+		WHERE RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+    </select>
+
+    <!-- 특정 알림의 확인 상태 업데이트 -->
+    <update id="updAlertChk" parameterType="hashmap">
+        UPDATE ALERT
+		SET ALERT_CHK = 2
+		WHERE ALERT_NO = #{alertNo}
+		AND USER_NO = #{userNo}
+    </update>
+
+    <!-- 특정 알림 조회 -->
+    <select id="getAlert" parameterType="hashmap" resultType="kr.or.ddit.vo.AlertVO">
+        SELECT ALERT_NO, ALERT_CN, ALERT_CHK, ALERT_CREATE, ALERT_TY
+				, USER_NO, ALERT_PK, ALERT_URL, ALERT_FILE
+        FROM ALERT
+        WHERE ALERT_NO = #{alertNo} 
+        AND USER_NO = #{userNo}
+    </select>
+    
+    
+    <!-- 재정 직원 조회  -->
+    <select id="findJJ" parameterType="List" resultType="kr.or.ddit.vo.EmployeeVO">
+    	SELECT USER_NO, POSITION_NO, EMP_MANAGER, DEPT_NO
+		FROM EMPLOYEE
+		WHERE DEPT_NO = 3
+    </select>
+    
+    <!-- 물류 직원 조회  -->
+    <select id="findMR" parameterType="List" resultType="kr.or.ddit.vo.EmployeeVO">
+    	SELECT USER_NO, POSITION_NO, EMP_MANAGER, DEPT_NO
+		FROM EMPLOYEE
+		WHERE DEPT_NO = 5
+    </select>
+    
+    <!-- 가맹점주 조회  -->
+    <select id="findGMJ" parameterType="int" resultType="kr.or.ddit.vo.StoreEmpVO"> 
+    	SELECT USER_NO, STORE_NO, POSITION_NO, STORE_NM
+		FROM STORE_EMP
+		WHERE STORE_NO = #{storeNo} 
+<!-- 		AND USER_NO = #{userNo}  -->
+		AND POSITION_NO = 5
+    </select>
+    
+    
+    <!-- 건의게시판 댓글에 달린 게시글 조회 -->
+    <select id="findSBNo" parameterType="int" resultType="kr.or.ddit.suggest.jw.VO.SuggestVO">
+    	SELECT SUGGEST_BOARD_NO, SUGGEST_CONTENT, SUGGEST_DATE, USER_NO, SUGGEST_TITLE, SUGGEST_STATUS
+		FROM SUGGEST_BOARD
+		WHERE SUGGEST_BOARD_NO = #{suggestBoardNo}
+    </select>
+    
+    
+    <!-- 건의게시판 대댓글의 부모 댓글 정보 조회 -->
+    <select id="findParentReply" parameterType="int" resultType="kr.or.ddit.suggest.jw.VO.ReplyVO">
+    	SELECT REP_NO, PARENT_NO, SUGGEST_BOARD_NO, REP_USER
+		FROM REPLY
+		WHERE REP_NO = #{repNo}
+    </select>
+    
+    
+    <!-- 안 읽음 알림 갯수 -->
+    <select id="unreadCnt" parameterType="String" resultType="int">
+    	SELECT COUNT(*)
+		FROM ALERT
+		WHERE ALERT_CHK = 1
+		AND USER_NO = #{userNo}
+    
+    </select>
+</mapper>

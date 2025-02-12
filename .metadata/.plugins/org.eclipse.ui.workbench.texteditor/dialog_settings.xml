@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="hasShownOverlayPopupBefore" value="true"/>
+	<item key="replaceBarOpen" value="false"/>
+	<list key="searchhistory">
+		<item value="가맹점 직원"/>
+		<item value="*4) "/>
+		<item value="*2) "/>
+		<item value="*1) "/>
+		<item value="check"/>
+		<item value="bs-nav-tabs-link-active-color"/>
+		<item value="input-"/>
+		<item value="-bs-link-color"/>
+		<item value="select"/>
+		<item value="nav"/>
+		<item value="h1"/>
+		<item value="header"/>
+		<item value="signup-header"/>
+		<item value="box"/>
+		<item value="logo"/>
+	</list>
+	<list key="replacehistory">
+		<item value="발주 상세"/>
+		<item value="item"/>
+	</list>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
+		<item key="selection" value=""/>
+		<item key="wrap" value="true"/>
+		<item key="casesensitive" value="false"/>
+		<item key="wholeword" value="false"/>
+		<item key="incremental" value="false"/>
+		<item key="isRegEx" value="false"/>
+		<list key="findhistory">
+			<item value="sendNotification 체킁"/>
+			<item value="updAlertChk 체킁"/>
+			<item value="알림을 읽음 상태로"/>
+			<item value="알림을 읽음 상태로 "/>
+			<item value="알림을 읽음 상태로 ["/>
+			<item value="unreadCnt -&gt; count : "/>
+			<item value="unreadCnt 체킁"/>
+			<item value="updateBill -&gt; inventoryResult"/>
+			<item value="createRereply -&gt; recipientUserNo:"/>
+			<item value="createRereply -&gt; 게시글 작성자:"/>
+			<item value="createReply - &gt; result :"/>
+			<item value="createReply -&gt; recipientUserNo:"/>
+			<item value="createPost -&gt; result : "/>
+			<item value="createPost -&gt; recipientUserNo:"/>
+			<item value="updateBill -&gt; recipientUserNo :"/>
+		</list>
+		<list key="replacehistory">
+		</list>
+	</section>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
+		<item key="DIALOG_X_ORIGIN" value="722"/>
+		<item key="DIALOG_Y_ORIGIN" value="291"/>
+		<item key="DIALOG_WIDTH" value="369"/>
+		<item key="DIALOG_HEIGHT" value="454"/>
+		<item key="DIALOG_FONT_NAME" value="1|맑은 고딕|9.0|0|WINDOWS|1|-15|0|0|0|400|0|0|0|1|0|0|0|0|맑은 고딕"/>
+	</section>
+	<section name="org.eclipse.ui.texteditor.GotoLineAction$GotoLineDialog_dialogBounds">
+		<item key="DIALOG_X_ORIGIN" value="686"/>
+		<item key="DIALOG_Y_ORIGIN" value="354"/>
+	</section>
+</section>

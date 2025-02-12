@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.notice.jw.mapper.NoticeMapper">
+	<sql id="where">
+		<if test="keyword!=null and keyword!=''">
+			AND (D.DEPT_NM LIKE '%' || #{keyword} || '%'
+		      OR T.BOARD_TITLE LIKE '%' || #{keyword} || '%'
+		      OR T.USER_NM LIKE '%' || #{keyword} || '%'
+		    )
+		</if>
+	</sql>
+
+	<!-- map: {currentPage=1, keyword=등록} -->
+	<select id="getList" parameterType="hashMap" resultType="kr.or.ddit.notice.jw.vo.NoticeVO">
+		WITH U AS(
+		    SELECT ROW_NUMBER() OVER(ORDER BY T.BOARD_NO DESC) RNUM
+		         , T.*, D.DEPT_NM
+		    FROM
+		    (
+		        SELECT A.BOARD_NO, A.BOARD_CODE_NO, A.BOARD_TITLE, A.BOARD_CN, A.BOARD_REG_DATE
+		             , A.BOARD_CNT, A.BOARD_STATUS, A.USER_NO
+		             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+		             , A.FILE_GROUP_NO, A.BOARD_START
+		             , A.BOARD_END 
+		        FROM BOARD A
+		        WHERE A.BOARD_CODE_NO = 1    
+		    ) T, EMPLOYEE E, DEPT D
+		    WHERE T.USER_NO = E.USER_NO
+		    AND E.DEPT_NO = D.DEPT_NO
+		    AND BOARD_STATUS = 1
+		    <include refid="where"></include>
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	
+	<!-- map: {currentPage=1, keyword=} -->
+	<select id="total" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+	    FROM
+	    (
+	        SELECT A.BOARD_NO, A.BOARD_CODE_NO, A.BOARD_TITLE, A.BOARD_CN, A.BOARD_REG_DATE
+	             , A.BOARD_CNT, A.BOARD_STATUS, A.USER_NO
+	             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+	             , A.FILE_GROUP_NO, A.BOARD_START
+	             , A.BOARD_END 
+	        FROM BOARD A
+	        WHERE A.BOARD_CODE_NO = 1    
+	    ) T, EMPLOYEE E, DEPT D
+	    WHERE T.USER_NO = E.USER_NO
+	    AND E.DEPT_NO = D.DEPT_NO
+	    AND BOARD_STATUS = 1
+		<include refid="where"></include>
+	</select>
+	
+	<select id="detail" parameterType="int" resultType="kr.or.ddit.notice.jw.vo.NoticeVO">
+		SELECT BOARD_NO, BOARD_CODE_NO, BOARD_TITLE, BOARD_CN, BOARD_REG_DATE
+			  , BOARD_CNT, BOARD_STATUS, B.USER_NO, FILE_GROUP_NO, BOARD_START
+			  , BOARD_END ,USER_NM
+		FROM BOARD B, TB_USER U
+		WHERE B.USER_NO = U.USER_NO
+		AND BOARD_NO = #{boardNo}
+	</select>
+	
+	<update id="update" parameterType="kr.or.ddit.notice.jw.vo.NoticeVO" >
+		UPDATE BOARD
+		SET BOARD_TITLE = #{boardTitle}
+			, BOARD_CN = #{boardCn}
+			, BOARD_START = #{boardStart}
+			, BOARD_END = #{boardEnd}
+		WHERE BOARD_NO = #{boardNo}
+	</update>
+	
+	<update id="delete" parameterType="kr.or.ddit.notice.jw.vo.NoticeVO">
+		UPDATE BOARD
+		SET BOARD_STATUS = 2
+		WHERE BOARD_NO = #{boardNo}	
+	</update>
+	
+	<insert id="createPost" parameterType="kr.or.ddit.notice.jw.vo.NoticeVO">
+		INSERT INTO BOARD(BOARD_NO,BOARD_CODE_NO, BOARD_TITLE, BOARD_CN, BOARD_REG_DATE, BOARD_STATUS, BOARD_START, BOARD_END, USER_NO )
+		VALUES((SELECT NVL(MAX(BOARD_NO),0)+1 FROM BOARD),1,#{boardTitle},#{boardCn},SYSDATE,1,#{boardStart},#{boardEnd},#{userNo} )
+		<selectKey resultType="int" keyProperty="boardNo" order="AFTER">
+			SELECT MAX(BOARD_NO) FROM BOARD
+		</selectKey>
+	</insert>
+</mapper>

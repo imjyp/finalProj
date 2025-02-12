@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.positionManage.jm.mapper.PositionManageMapper">
+
+	<select id="getPositionList" resultType="PositionVO">
+			SELECT position_no, position_nm, position_affiliation
+			FROM POSITION
+			WHERE position_state = 1
+			ORDER BY 
+		        CASE
+				<!-- 첫 번째 정렬 기준: position_affiliation -->
+		            WHEN position_affiliation = '본사' THEN 1
+		            WHEN position_affiliation = '가맹점' THEN 2
+		            ELSE 3
+		        END,
+		        CASE
+				<!-- 두 번째 정렬 기준: position_nm -->
+			        WHEN position_nm = 'CEO' THEN 1
+			        WHEN position_nm = '부장' THEN 2
+			        WHEN position_nm = '과장' THEN 3
+			        WHEN position_nm = '사원' THEN 4
+			        WHEN position_nm = '점주' THEN 5
+			        WHEN position_nm = '매니저' THEN 6
+			        WHEN position_nm = '알바' THEN 7
+			        ELSE 8
+			    END,
+				<!-- 나머지: 번호순 오름차순 정렬 -->
+        		position_no ASC
+	</select>
+	
+	<!-- 중복 확인 후 데이터 삽입 -->
+	<insert id="createPosition" parameterType="PositionVO" >
+		<!-- 중복 확인 후 데이터 삽입 -->
+        <!-- 1번 쿼리 PK 직접입력 중복체크 후 반환  -->
+        <!-- INSERT INTO POSITION (position_no, position_nm, position_affiliation)
+	    SELECT #{positionNo}, 
+	    		#{positionNm}, 
+	    		#{positionAffiliation} 
+	    FROM DUAL 실제 데이터는 존재하지 않는 더미 테이블로
+	    조건이 충족되지 않는 경우에만 데이터를 삽입합니다.
+	    WHERE NOT EXISTS ( 
+	        SELECT 1
+	        FROM POSITION
+	        WHERE position_no = #{positionNo}
+	    ) -->
+	    
+	    <!-- 2번 쿼리 PK자동생성 -->
+	    INSERT INTO POSITION (position_no, position_nm, position_affiliation)
+		VALUES ( (SELECT NVL(MAX(position_no), 0) + 1 FROM POSITION), #{positionNm}, #{positionAffiliation})
+	</insert>
+	
+	<update id="updatePosition" parameterType="PositionVO" >
+		UPDATE POSITION
+		SET position_nm = #{positionNm},
+		 	position_affiliation = #{positionAffiliation}
+		WHERE position_no = #{positionNo}
+	</update>
+	
+	<!-- delete 대신에 update로 상태코드 변경하면 0(삭제상태)로 바꿈 -->
+	<update id="deletePosition" parameterType="PositionVO" >
+		UPDATE POSITION
+		SET position_state = 0
+		WHERE position_no = #{positionNo}
+	</update>
+
+</mapper>

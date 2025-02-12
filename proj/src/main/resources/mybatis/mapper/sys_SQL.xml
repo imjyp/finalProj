@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.sys.jy.mapper.SysMapper">
+	
+	<!-- 유형 리스트 -->
+	<resultMap type="kr.or.ddit.vo.TBUserVO" id="userListMap">
+		<result property="userNo" column="USER_NO"/>
+	    <result property="userNm" column="USER_NM"/>
+	    <result property="enabled" column="ENABLED"/>
+	    <result property="deptNm" column="DEPT_NM"/>
+	    <result property="positionNm" column="POSITION_NM"/>
+	    <result property="authName" column="AUTH_NAME"/>
+	    <result property="authDate" column="AUTH_DATE"/>
+	    <result property="storeNm" column="STORE_NM"/>
+	    <result property="rnum" column="RNUM"/>
+	    
+	    <!--  
+	    <association property="authList" resultMap="authMap"></association>
+	    <association property="deptList" resultMap="deptMap"></association>
+	    <association property="positionList" resultMap="positionMap"></association>
+	    <association property="employeeList" resultMap="employeeMap"></association>
+	    <association property="storeEmpList" resultMap="storeEmpMap"></association>
+	    -->
+	</resultMap>
+	<!--  
+	<resultMap type="kr.or.ddit.vo.DeptVO" id="deptMap">
+		<result property="deptNo" column="DEPT_NO"/>
+		<result property="deptNm" column="DEPT_NM"/>
+		<result property="authNo" column="AUTH_NO"/>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.PositionVO" id="positionMap">
+		<result property="positionNo" column="POSITION_NO"/>
+		<result property="positionNm" column="POSITION_NM"/>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.EmployeeVO" id="employeeMap">
+		<result property="userNo" column="USER_NO"/>
+		<result property="positionNo" column="POSITION_NO"/>
+		<result property="empManager" column="EMP_MANAGER"/>
+		<result property="deptNo" column="DEPT_NO"/>
+	</resultMap>
+
+	<resultMap type="kr.or.ddit.vo.StoreEmpVO" id="storeEmpMap">
+		<result property="userNo" column="USER_NO"/>
+		<result property="storeNo" column="STORE_NO"/>
+		<result property="positionNo" column="POSITION_NO"/>
+	</resultMap>
+	-->
+	
+	<!-- 시스템 관리자 회원 목록 -->
+	<select id="bonsaList" parameterType="hashMap" resultMap="userListMap">
+		SELECT T.RNUM,T.USER_NO, T.USER_NM , T.ENABLED, T.USER_CODE, T.USER_STATUS, T.USER_CREATE
+			   , T.USER_PHONE, T.USER_MAIL, T.USER_INDATE
+		       , CASE 
+		           WHEN T.DEPT_NO IS NOT NULL THEN '본사'
+		           ELSE '기타'
+		       END AS 소속
+		       , T.DEPT_NM AS DEPT_NM, T.POSITION_NM AS POSITION_NM, T.AUTH_NAME AS AUTH_NAME, T.AUTH_DATE AS AUTH_DATE
+		FROM (
+		    SELECT ROW_NUMBER() OVER (ORDER BY U.USER_CREATE DESC) AS RNUM
+		           , U.USER_NO, U.USER_NM, U.ENABLED, U.USER_CODE, U.USER_STATUS, U.USER_CREATE
+		           , U.USER_PHONE, U.USER_MAIL, U.USER_INDATE
+		           , E.DEPT_NO, D.DEPT_NM, P.POSITION_NM
+		           , A.AUTH_NAME, A.AUTH_DATE
+		    FROM TB_USER U
+		    LEFT JOIN AUTH A ON U.USER_NO = A.USER_NO
+		    LEFT JOIN EMPLOYEE E ON U.USER_NO = E.USER_NO
+		    LEFT JOIN DEPT D ON E.DEPT_NO = D.DEPT_NO 
+		    LEFT JOIN POSITION P ON E.POSITION_NO = P.POSITION_NO
+		    WHERE 1=1
+		    AND E.USER_NO IS NOT NULL
+		    AND U.USER_CODE NOT IN (2, 4)
+		    <if test="keyword != null and keyword != ''">
+		      AND (
+		          U.USER_NO LIKE '%' || #{keyword} || '%' OR
+		          U.USER_NM LIKE '%' || #{keyword} || '%' OR
+		          D.DEPT_NM LIKE '%' || #{keyword} || '%' OR
+		          P.POSITION_NM LIKE '%' || #{keyword} || '%' OR
+		          A.AUTH_DATE LIKE '%' || #{keyword} || '%' OR
+		          U.ENABLED LIKE '%' || #{keyword} || '%' OR
+	          	   (CASE 
+			            WHEN U.ENABLED = 1 THEN '인증'
+			            WHEN U.ENABLED = 0 THEN '미인증'
+			        END) LIKE '%' || #{keyword} || '%'	
+		         OR (CASE 
+		            WHEN U.USER_CODE IN (1, 3) THEN '본사'
+		            ELSE '기타'
+		        END) LIKE '%' || #{keyword} || '%' OR
+		        U.USER_STATUS LIKE '%' || #{keyword} || '%' OR
+		          (CASE 
+		            WHEN U.USER_STATUS = 1 THEN '정상'
+		            WHEN U.USER_STATUS = 2 THEN '탈퇴'
+		        END) LIKE '%' || #{keyword} || '%'
+		        
+		      )
+	      </if>
+	       <!-- 대분류 및 중분류 필터링 -->
+	       <if test="mainCategory == 'type'">
+		     <if test="subCategory == '본사'">
+		        AND U.USER_CODE IN (1, 3) 
+		    </if>
+		    <if test="subCategory == '가맹점'">
+		        AND U.USER_CODE IN (2, 4) 
+		    </if>
+			</if>
+				       
+	       <if test="mainCategory == 'dept'">
+		    AND D.DEPT_NM = #{subCategory}
+		   </if>
+
+          <if test="mainCategory == 'position'">
+         	AND P.POSITION_NM = #{subCategory}
+		 </if>
+		 <if test="mainCategory == 'enabled'">
+         	<if test="subCategory == 1">
+	         AND U.ENABLED = 1
+	       </if>
+	       <if test="subCategory == 0">
+	        AND U.ENABLED = 0
+	       </if>
+		 </if>
+		) T
+		WHERE T.RNUM BETWEEN (#{currentPage} - 1) * 10 + 1 AND #{currentPage} * 10
+		ORDER BY T.USER_CREATE DESC, T.USER_NO ASC
+	</select>
+	
+	
+	<!-- 시스템 관리자 회원 목록 -->
+	<select id="userList" parameterType="hashMap" resultMap="userListMap">
+		SELECT T.RNUM,T.USER_NO, T.USER_NM , T.ENABLED, T.USER_CODE, T.USER_STATUS, T.USER_CREATE
+			   , T.USER_PHONE, T.USER_MAIL, T.USER_INDATE
+		       , CASE 
+		           WHEN T.DEPT_NO IS NOT NULL THEN '본사'
+		           WHEN T.STORE_NM IS NOT NULL THEN '가맹점'
+		           ELSE '기타'
+		       END AS 소속
+		       , T.DEPT_NM AS DEPT_NM, T.STORE_NM AS STORE_NM, T.POSITION_NM AS POSITION_NM, T.AUTH_NAME AS AUTH_NAME, T.AUTH_DATE AS AUTH_DATE
+		FROM (
+		    SELECT ROW_NUMBER() OVER (ORDER BY U.USER_CREATE DESC) AS RNUM
+		           , U.USER_NO, U.USER_NM, U.ENABLED, U.USER_CODE, U.USER_STATUS, U.USER_CREATE
+		           , U.USER_PHONE, U.USER_MAIL, U.USER_INDATE
+		           , E.DEPT_NO, SE.STORE_NM, D.DEPT_NM, P.POSITION_NM
+		           , A.AUTH_NAME, A.AUTH_DATE
+		    FROM TB_USER U
+		    LEFT JOIN AUTH A ON U.USER_NO = A.USER_NO
+		    LEFT JOIN EMPLOYEE E ON U.USER_NO = E.USER_NO
+		    LEFT JOIN STORE_EMP SE ON U.USER_NO = SE.USER_NO
+		    LEFT JOIN DEPT D ON E.DEPT_NO = D.DEPT_NO 
+		    LEFT JOIN POSITION P ON E.POSITION_NO = P.POSITION_NO OR SE.POSITION_NO = P.POSITION_NO
+		    WHERE 1=1
+		    <if test="keyword != null and keyword != ''">
+		      AND (
+		          U.USER_NO LIKE '%' || #{keyword} || '%' OR
+		          U.USER_NM LIKE '%' || #{keyword} || '%' OR
+		          D.DEPT_NM LIKE '%' || #{keyword} || '%' OR
+		          P.POSITION_NM LIKE '%' || #{keyword} || '%' OR
+		          A.AUTH_DATE LIKE '%' || #{keyword} || '%' OR
+		          SE.STORE_NM LIKE '%' || #{keyword} || '%' OR
+		          U.ENABLED LIKE '%' || #{keyword} || '%' OR
+	          	   (CASE 
+			            WHEN U.ENABLED = 1 THEN '인증'
+			            WHEN U.ENABLED = 0 THEN '미인증'
+			        END) LIKE '%' || #{keyword} || '%'	
+		         OR (CASE 
+		            WHEN U.USER_CODE IN (1, 3) THEN '본사'
+		            WHEN U.USER_CODE IN (2, 4) THEN '가맹점'
+		            ELSE '기타'
+		        END) LIKE '%' || #{keyword} || '%' OR
+		        U.USER_STATUS LIKE '%' || #{keyword} || '%' OR
+		          (CASE 
+		            WHEN U.USER_STATUS = 1 THEN '정상'
+		            WHEN U.USER_STATUS = 2 THEN '탈퇴'
+		        END) LIKE '%' || #{keyword} || '%'
+		        
+		      )
+	      </if>
+	       <!-- 대분류 및 중분류 필터링 -->
+	       <if test="mainCategory == 'type'">
+		     <if test="subCategory == '본사'">
+		        AND U.USER_CODE IN (1, 3) 
+		    </if>
+		    <if test="subCategory == '가맹점'">
+		        AND U.USER_CODE IN (2, 4) 
+		    </if>
+			</if>
+				       
+	       <if test="mainCategory == 'dept'">
+		    AND D.DEPT_NM = #{subCategory}
+		   </if>
+
+          <if test="mainCategory == 'position'">
+         	AND P.POSITION_NM = #{subCategory}
+		 </if>
+		 <if test="mainCategory == 'enabled'">
+         	<if test="subCategory == 1">
+	         AND U.ENABLED = 1
+	       </if>
+	       <if test="subCategory == 0">
+	        AND U.ENABLED = 0
+	       </if>
+		 </if>
+		) T
+		WHERE T.RNUM BETWEEN (#{currentPage} - 1) * 10 + 1 AND #{currentPage} * 10
+		ORDER BY T.USER_CREATE DESC, T.USER_NO ASC
+	</select>
+	
+	<!-- 권한명 수정 -->
+	<update id="updateUserAuth" parameterType="kr.or.ddit.vo.TBUserVO">
+		UPDATE AUTH
+		SET AUTH_NAME = #{authName}
+		WHERE USER_NO = #{userNo}
+	</update>
+
+	<!-- 인증여부 수정 -->
+	<update id="updateEnabled" parameterType="kr.or.ddit.vo.TBUserVO">
+		UPDATE TB_USER
+		SET ENABLED = #{enabled}
+		WHERE USER_NO = #{userNo}
+	</update>
+	
+	
+	<!-- 전체 행의 수 (검색 및 페이지네이션)-->
+	   <select id="getTotal" parameterType="hashMap" resultType="int">
+		    SELECT COUNT(*)
+			FROM TB_USER U
+			LEFT JOIN EMPLOYEE E ON U.USER_NO = E.USER_NO
+		    LEFT JOIN DEPT D ON E.DEPT_NO = D.DEPT_NO 
+		    LEFT JOIN POSITION P ON E.POSITION_NO = P.POSITION_NO
+			LEFT JOIN STORE_EMP SE ON U.USER_NO = SE.USER_NO 
+			LEFT JOIN AUTH A ON U.USER_NO = A.USER_NO 
+			WHERE 1 = 1
+			  <if test="keyword != null and keyword != ''">
+			    AND (
+			        U.USER_NO LIKE '%' || #{keyword} || '%' OR
+			        U.USER_NM LIKE '%' || #{keyword} || '%' OR
+			        D.DEPT_NM LIKE '%' || #{keyword} || '%' OR
+			        P.POSITION_NM LIKE '%' || #{keyword} || '%' OR
+			        A.AUTH_DATE LIKE '%' || #{keyword} || '%' OR
+			        SE.STORE_NM LIKE '%' || #{keyword} || '%' OR
+			        U.ENABLED LIKE '%' || #{keyword} || '%' OR
+			        (CASE 
+			            WHEN U.USER_CODE IN (1, 3) THEN '본사'
+			            WHEN U.USER_CODE IN (2, 4) THEN '가맹점'
+			            ELSE '기타'
+			        END) LIKE '%' || #{keyword} || '%'
+			    )
+			  </if>
+			
+		      <if test="mainCategory == 'type'">
+		        <choose>
+		            <when test="subCategory == '본사'">
+		                AND U.USER_CODE IN (1, 3) 
+		            </when>
+		            <when test="subCategory == '가맹점'">
+		                AND U.USER_CODE IN (2, 4)  
+		            </when>
+		        </choose>
+		      </if>
+			
+			  <if test="mainCategory == 'dept'">
+			    AND D.DEPT_NM = #{subCategory}
+			  </if>
+			
+			  <if test="mainCategory == 'position'">
+			    AND P.POSITION_NM = #{subCategory}
+			  </if>
+
+	</select>
+
+	
+	<!-- 써머리 -->
+	<select id="summary" resultType="map">
+		SELECT 
+		    SUM(CASE WHEN ENABLED = 0 THEN 1 ELSE 0 END) AS "pendingCnt",
+		    SUM(CASE WHEN ENABLED = 1 THEN 1 ELSE 0 END) AS "approvalCnt",
+		    COUNT(*) AS "totalMem",
+		    SUM(CASE WHEN USER_CODE IN (1, 3) THEN 1 ELSE 0 END) AS "bonsaEmp",
+		    SUM(CASE WHEN USER_CODE IN (2, 4) THEN 1 ELSE 0 END) AS "storeEmp",
+		    SUM(CASE WHEN USER_STATUS = 1 THEN 1 ELSE 0 END) AS "nomalMem",
+		    SUM(CASE WHEN USER_STATUS = 2 THEN 1 ELSE 0 END) AS "delMem"
+		FROM TB_USER
+	</select>
+</mapper>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.member.jy.mapper.MemberMapper">
+
+
+	<resultMap type="kr.or.ddit.vo.TBUserVO" id="tBUserMap">
+		<result property="userNo" column="USER_NO"/>
+		<result property="userPw" column="USER_PW"/>
+		<result property="enabled" column="ENABLED"/>
+		<result property="userCode" column="USER_CODE"/>
+		<result property="userNm" column="USER_NM"/>
+		<result property="userMail" column="USER_MAIL"/>
+		<result property="userPhone" column="USER_PHONE"/>
+		<result property="userBirth" column="USER_BIRTH"/>
+		<result property="userIndate" column="USER_INDATE"/>
+		<result property="userProfile" column="USER_PROFILE"/>
+		<result property="userSign" column="USER_SIGN"/>
+		<result property="userSysYn" column="USER_SYS_YN"/>
+		<result property="userCreate" column="USER_CREATE"/>
+		<result property="userAddr1" column="USER_ADDR1"/>
+		<result property="userAddr2" column="USER_ADDR2"/>
+		<result property="userZip" column="USER_ZIP"/>
+		<collection property="authList" resultMap="authMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.AuthVO" id="authMap">
+		<result property="authNo" column="AUTH_NO"/>
+		<result property="userNo" column="USER_NO"/>
+		<result property="authName" column="AUTH_NAME"/>
+		<result property="authDate" column="AUTH_DATE"/>
+	</resultMap>
+
+	<select id="read" parameterType="string" resultMap="tBUserMap">
+	      	SELECT U.USER_NO, U.USER_PW, U.ENABLED, U.USER_CODE, U.USER_NM
+			     , U.USER_MAIL, U.USER_PHONE, U.USER_BIRTH, U.USER_INDATE, U.USER_PROFILE
+			     , U.USER_SIGN, U.USER_SYS_YN, U.USER_CREATE, U.USER_ADDR1, U.USER_ADDR2
+			     , U.USER_ZIP
+			     , A.AUTH_NO, A.USER_NO, A.AUTH_NAME, A.AUTH_DATE
+			FROM TB_USER U, AUTH A
+			WHERE U.USER_NO = A.USER_NO
+			AND U.USER_NO = #{userNo} 
+   </select>
+</mapper>

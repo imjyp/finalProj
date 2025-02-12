@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.suggest.jw.mapper.SuggestMapper">
+
+	<sql id="where">
+		<if test="keyword != null and keyword != ''">
+			AND DEPT_NM LIKE '%' || #{keyword} ||'%' 
+			 OR SUGGEST_TITLE LIKE '%' || #{keyword} ||'%'
+			 OR USER_NM LIKE '%' || #{keyword} ||'%'
+		</if>
+	</sql>
+
+	<!-- map: {currentPage=1, keyword=} -->
+	<select id="getList" parameterType="hashMap" resultType="kr.or.ddit.suggest.jw.VO.SuggestVO">
+		WITH U AS(
+			SELECT ROW_NUMBER() OVER(ORDER BY SUGGEST_BOARD_NO DESC) RNUM, T.*, D.DEPT_NM
+			FROM
+			(  SELECT SUGGEST_BOARD_NO, SUGGEST_CONTENT, SUGGEST_DATE, S.USER_NO, SUGGEST_TITLE, SUGGEST_STATUS 
+				,(SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = S.USER_NO) USER_NM
+				FROM SUGGEST_BOARD S
+			) T, EMPLOYEE E, DEPT D
+			WHERE T.USER_NO = E.USER_NO
+	        AND E.DEPT_NO = D.DEPT_NO
+	        AND SUGGEST_STATUS = 1
+        ) 
+        SELECT *FROM U
+		WHERE RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+        <include refid="where"></include>
+	</select>
+	
+	<!-- map: {currentPage=1, keyword=} -->
+	<select id="total" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM (
+          SELECT  T.*, D.DEPT_NM
+		  FROM (  SELECT SUGGEST_BOARD_NO, SUGGEST_CONTENT, SUGGEST_DATE, S.USER_NO, SUGGEST_TITLE, SUGGEST_STATUS 
+				,(SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = S.USER_NO) USER_NM
+				FROM SUGGEST_BOARD S
+			) T, EMPLOYEE E, DEPT D
+			WHERE T.USER_NO = E.USER_NO
+	        AND E.DEPT_NO = D.DEPT_NO
+			AND SUGGEST_STATUS = 1)
+           WHERE 1 = 1
+		<include refid="where"></include>
+	</select>
+	
+	<select id="detail" parameterType="int" resultType="kr.or.ddit.suggest.jw.VO.SuggestVO">
+		SELECT SUGGEST_BOARD_NO, SUGGEST_CONTENT, SUGGEST_DATE, B.USER_NO, SUGGEST_TITLE, SUGGEST_STATUS,USER_NM
+		FROM SUGGEST_BOARD B, TB_USER U
+		WHERE B.USER_NO = U.USER_NO
+		AND SUGGEST_BOARD_NO = #{suggestBoardNo}
+	</select>
+	
+
+	<update id="update" parameterType="kr.or.ddit.suggest.jw.VO.SuggestVO" >
+		UPDATE SUGGEST_BOARD
+		SET SUGGEST_TITLE = #{suggestTitle}
+			, SUGGEST_CONTENT = #{suggestContent}
+		WHERE SUGGEST_BOARD_NO = #{suggestBoardNo}
+	</update>
+	
+	<update id="delete" parameterType="kr.or.ddit.suggest.jw.VO.SuggestVO">
+		UPDATE SUGGEST_BOARD
+		SET SUGGEST_STATUS = 2
+		WHERE SUGGEST_BOARD_NO = #{suggestBoardNo}	
+	</update>
+	
+	<insert id="createPost" parameterType="kr.or.ddit.suggest.jw.VO.SuggestVO">
+		INSERT INTO SUGGEST_BOARD(SUGGEST_BOARD_NO, SUGGEST_CONTENT, USER_NO, SUGGEST_TITLE )
+		VALUES((SELECT NVL(MAX(SUGGEST_BOARD_NO),0)+1 FROM SUGGEST_BOARD),#{suggestContent},#{userNo},#{suggestTitle} )
+		<selectKey resultType="int" keyProperty="suggestBoardNo" order="AFTER">
+			SELECT MAX(SUGGEST_BOARD_NO) FROM SUGGEST_BOARD
+		</selectKey>
+	</insert>
+	
+	<select id="selectReply" parameterType="kr.or.ddit.suggest.jw.VO.SuggestVO" resultType="kr.or.ddit.suggest.jw.VO.ReplyVO">
+		 WITH T AS(
+		    SELECT REP_NO, PARENT_NO, R.SUGGEST_BOARD_NO, REP_REG_DATE
+		          , REP_CONTENT, REP_STATUS, REP_USER, USER_NM
+		    FROM REPLY R, SUGGEST_BOARD S, TB_USER T
+		    WHERE R.SUGGEST_BOARD_NO = S.SUGGEST_BOARD_NO
+		    AND REP_USER = T.USER_NO
+		    AND REP_STATUS = 1
+		    AND S.SUGGEST_BOARD_NO = #{suggestBoardNo}
+		)
+		SELECT T.REP_NO, T.PARENT_NO, T.SUGGEST_BOARD_NO, T.REP_REG_DATE
+		     , T.REP_CONTENT, T.REP_STATUS, T.REP_USER, T.USER_NM
+		     , LEVEL LVL
+		FROM T
+		START WITH T.PARENT_NO IS NULL
+		CONNECT BY PRIOR T.REP_NO = T.PARENT_NO
+		ORDER SIBLINGS BY T.REP_NO
+	</select>
+	
+	<insert id="createReply" parameterType="kr.or.ddit.suggest.jw.VO.ReplyVO">
+		
+		INSERT INTO REPLY(REP_NO, REP_REG_DATE, REP_CONTENT, REP_STATUS, REP_USER, SUGGEST_BOARD_NO
+		<if test="parentNo != null and parentNo !=''">
+		, PARENT_NO
+		</if>
+		)
+		VALUES((SELECT NVL(MAX(REP_NO),0)+1 FROM REPLY), SYSDATE, #{repContent},'1', #{repUser}, #{suggestBoardNo}
+		<if test="parentNo != null and parentNo !=''">
+		, #{parentNo}
+		</if>
+		)
+	</insert>
+	
+	<update id="updateReply" parameterType="hashmap">
+		UPDATE REPLY
+		SET REP_CONTENT =#{repContent}
+		WHERE REP_NO = #{repNo}
+	</update>
+	
+	<update id="deleteReply" parameterType="int">
+		UPDATE REPLY
+		SET REP_STATUS = 2
+		WHERE REP_NO = #{repNo}
+	</update>
+	
+	<insert id="createRereply" parameterType="hashMap">
+		INSERT INTO REPLY(REP_NO, REP_REG_DATE, REP_CONTENT, REP_STATUS, REP_USER, SUGGEST_BOARD_NO
+		<if test="parentNo != null and parentNo !=''">
+		, PARENT_NO
+		</if>
+		)
+		VALUES((SELECT NVL(MAX(REP_NO),0)+1 FROM REPLY), SYSDATE, #{repContent},'1', #{repUser}, #{suggestBoardNo}
+		<if test="parentNo != null and parentNo !=''">
+		, #{parentNo}
+		</if>
+		)
+	</insert>
+</mapper>

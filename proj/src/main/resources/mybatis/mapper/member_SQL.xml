@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.member.jy.mapper.MemberMapper">
+
+   <sql id="where">
+      AND (
+         USER_NO LIKE '%' || #{keyword} || '%' OR
+         USER_NM LIKE '%' || #{keyword} || '%' OR
+         USER_MAIL LIKE '%' || #{keyword} || '%' OR
+         USER_PHONE LIKE '%' || #{keyword} || '%' OR
+         USER_BIRTH LIKE '%' || #{keyword} || '%' OR
+         USER_INDATE LIKE '%' || #{keyword} || '%' OR
+         USER_CREATE LIKE '%' || #{keyword} || '%' OR
+         USER_ADDR1 LIKE '%' || #{keyword} || '%' OR
+         USER_ADDR2 LIKE '%' || #{keyword} || '%' OR
+         USER_ZIP LIKE '%' || #{keyword} || '%'
+      )
+   </sql>
+   
+   <resultMap type="kr.or.ddit.vo.TBUserVO" id="tBUserMap">
+      <result property="userNo" column="USER_NO" />
+      <result property="userPw" column="USER_PW" />
+      <result property="enabled" column="ENABLED" />
+      <result property="userCode" column="USER_CODE" />
+      <result property="userNm" column="USER_NM" />
+      <result property="userMail" column="USER_MAIL" />
+      <result property="userPhone" column="USER_PHONE" />
+      <result property="userBirth" column="USER_BIRTH" />
+      <result property="userIndate" column="USER_INDATE" />
+      <result property="userProfile" column="USER_PROFILE" />
+      <result property="userSign" column="USER_SIGN" />
+      <result property="userSysYn" column="USER_SYS_YN" />
+      <result property="userCreate" column="USER_CREATE" />
+      <result property="userAddr1" column="USER_ADDR1" />
+      <result property="userAddr2" column="USER_ADDR2" />
+      <result property="userZip" column="USER_ZIP" />
+      <result property="deptNo" column="DEPT_NO" />
+      <result property="deptNm" column="DEPT_NM" />
+      <result property="positionNo" column="POSITION_NO" />
+      <result property="positionNm" column="POSITION_NM" />
+      <result property="storeNo" column="STORE_NO" />
+      <result property="storeNm" column="STORE_NM" />
+      <result property="rnum" column="RNUM" />
+      
+      <collection property="authList" resultMap="authMap"></collection>
+      <collection property="fileGroupVO" resultMap="fileGroupMap"></collection>
+      <collection property="fileGroupSignVO" resultMap="fileGroupSignMap"></collection>
+   </resultMap>
+
+   <resultMap type="kr.or.ddit.vo.AuthVO" id="authMap">
+      <result property="authNo" column="AUTH_NO" />
+      <result property="userNo" column="USER_NO" />
+      <result property="authName" column="AUTH_NAME" />
+      <result property="authDate" column="AUTH_DATE" />
+   </resultMap>
+
+   <resultMap type="kr.or.ddit.vo.FileGroupVO" id="fileGroupMap">
+      <result property="fileGroupNo" column="FILE_GROUP_NO"/>
+      <result property="fileGroupNm" column="FILE_GROUP_NM"/>
+      <result property="fileRegdate" column="FILE_REGDATE"/>
+      <result property="fileGroupTy" column="FILE_GROUP_TY"/>   
+      
+      <collection property="fileDetailVOList" resultMap="fileDetailMap"></collection>
+   </resultMap>
+   
+      <resultMap type="kr.or.ddit.vo.FileGroupVO" id="fileGroupSignMap">
+      <result property="fileGroupNo" column="FILE_GROUP_NO"/>
+      <result property="fileGroupNm" column="FILE_GROUP_NM"/>
+      <result property="fileRegdate" column="FILE_REGDATE"/>
+      <result property="fileGroupTy" column="FILE_GROUP_TY"/>   
+      
+      <collection property="fileDetailVOList" resultMap="fileDetailSignMap"></collection>
+   </resultMap>
+   
+   
+   <resultMap type="kr.or.ddit.vo.FileDetailVO" id="fileDetailMap">
+      <result property="fileNo" column="FILE_NO"/>
+      <result property="fileGroupNo" column="FILE_GROUP_NO"/>
+      <result property="fileOriginalName" column="FILE_ORIGINAL_NAME"/>
+      <result property="fileSaveName" column="FILE_SAVE_NAME"/>
+      <result property="fileExt" column="FILE_EXT"/>
+      <result property="fileSize" column="FILE_SIZE"/>
+      <result property="fileSaveLocate" column="FILE_SAVE_LOCATE"/>
+      <result property="fileMime" column="FILE_MIME"/>
+      <result property="fileFancysize" column="FILE_FANCYSIZE"/>
+      <result property="fileSaveDate" column="FILE_SAVE_DATE"/>
+      <result property="fileDowncount" column="FILE_DOWNCOUNT"/>
+   </resultMap>
+    
+   <resultMap type="kr.or.ddit.vo.FileDetailVO" id="fileDetailSignMap">
+      <result property="fileNo" column="FILE_NO_SIGN"/>
+      <result property="fileGroupNo" column="FILE_GROUP_NO_SIGN"/>
+      <result property="fileOriginalName" column="FILE_ORIGINAL_NAME_SIGN"/>
+      <result property="fileSaveName" column="FILE_SAVE_NAME_SIGN"/>
+      <result property="fileExt" column="FILE_EXT_SIGN"/>
+      <result property="fileSize" column="FILE_SIZE_SIGN"/>
+      <result property="fileSaveLocate" column="FILE_SAVE_LOCATE_SIGN"/>
+      <result property="fileMime" column="FILE_MIME_SIGN"/>
+      <result property="fileFancysize" column="FILE_FANCYSIZE_SIGN"/>
+      <result property="fileSaveDate" column="FILE_SAVE_DATE_SIGN"/>
+      <result property="fileDowncount" column="FILE_DOWNCOUNT_SIGN"/>
+   </resultMap>
+   
+
+   <!-- 로그인
+   private Integer deptNo;   // 가맹점 직원 가입 시 null 처리 위해 Integer로 변경
+   private String deptNm;
+   
+   // POSITION
+   private Integer positionNo;
+   private String positionNm;
+   
+   // STORE
+   private Integer storeNo;
+   private String storeNm;
+    -->
+   <select id="read" parameterType="string" resultMap="tBUserMap">
+         SELECT 
+          U.USER_NO, U.USER_PW, U.ENABLED, U.USER_CODE, U.USER_NM,
+          U.USER_MAIL, U.USER_PHONE, U.USER_BIRTH, U.USER_INDATE, U.USER_PROFILE,
+          U.USER_SIGN, U.USER_SYS_YN, U.USER_CREATE, U.USER_ADDR1, U.USER_ADDR2,
+          U.USER_ZIP, E.DEPT_NO, 
+          (SELECT DT.DEPT_NM FROM DEPT DT WHERE DT.DEPT_NO = E.DEPT_NO) DEPT_NM,
+          E.POSITION_NO || SE.POSITION_NO POSITION_NO,
+          (SELECT PN.POSITION_NM FROM POSITION PN WHERE PN.POSITION_NO = (E.POSITION_NO || SE.POSITION_NO)) POSITION_NM,
+          SE.STORE_NO, SE.STORE_NM,
+          A.AUTH_NO, A.USER_NO, A.AUTH_NAME, A.AUTH_DATE,
+          
+          G1.FILE_GROUP_NO, 
+          G1.FILE_GROUP_NM,
+          G1.FILE_REGDATE,
+          G1.FILE_GROUP_TY,
+          
+          D1.FILE_NO, 
+          D1.FILE_ORIGINAL_NAME,
+          D1.FILE_SAVE_NAME,
+          D1.FILE_EXT,
+          D1.FILE_SIZE,
+          D1.FILE_SAVE_LOCATE,
+          D1.FILE_MIME,
+          D1.FILE_FANCYSIZE,
+          D1.FILE_SAVE_DATE,
+      
+      
+          G2.FILE_GROUP_NO AS FILE_GROUP_NO_SIGN, 
+          G2.FILE_GROUP_NM AS FILE_GROUP_NM_SIGN,
+          G2.FILE_REGDATE AS FILE_REGDATE_SIGN,
+          G2.FILE_GROUP_TY AS FILE_GROUP_TY_SIGN,
+      
+          D2.FILE_NO AS FILE_NO_SIGN, 
+          D2.FILE_ORIGINAL_NAME AS FILE_ORIGINAL_NAME_SIGN,
+          D2.FILE_SAVE_NAME AS FILE_SAVE_NAME_SIGN,
+          D2.FILE_EXT AS FILE_EXT_SIGN,
+          D2.FILE_SIZE AS FILE_SIZE_SIGN,
+          D2.FILE_SAVE_LOCATE AS FILE_SAVE_LOCATE_SIGN,
+          D2.FILE_MIME AS FILE_MIME_SIGN,
+          D2.FILE_FANCYSIZE AS FILE_FANCYSIZE_SIGN,
+          D2.FILE_SAVE_DATE AS FILE_SAVE_DATE_SIGN
+      FROM  TB_USER U
+      LEFT JOIN  AUTH A ON U.USER_NO = A.USER_NO
+     <!--  원래는 auth 테이블에 userNo 없으면 조회되지 않아야 하므로 inner join이 맞지만
+     		현재 데이터상 오류가 많으므로 일단 leftjoin으로 해야 회원 detail 조회 가능
+     INNER JOIN  AUTH A ON U.USER_NO = A.USER_NO -->
+      LEFT OUTER JOIN  EMPLOYEE E ON U.USER_NO = E.USER_NO
+      LEFT OUTER JOIN  STORE_EMP SE ON U.USER_NO = SE.USER_NO
+      LEFT JOIN  FILE_GROUP G1 ON G1.FILE_GROUP_NO = U.USER_PROFILE 
+      LEFT JOIN  FILE_DETAIL D1 ON D1.FILE_GROUP_NO = G1.FILE_GROUP_NO 
+      LEFT JOIN  FILE_GROUP G2 ON G2.FILE_GROUP_NO = U.USER_SIGN  
+      LEFT JOIN  FILE_DETAIL D2 ON D2.FILE_GROUP_NO = G2.FILE_GROUP_NO 
+      WHERE   U.USER_NO = #{userNo} 
+   </select>
+
+
+   
+   <!-- 전체 행의 수 -->
+    <select id="getTotal" parameterType="hashMap" resultType="int">
+         SELECT COUNT(*)
+         FROM TB_USER
+         WHERE 1 = 1
+         <include refid="where"></include>
+   </select>
+   
+   
+   
+</mapper>

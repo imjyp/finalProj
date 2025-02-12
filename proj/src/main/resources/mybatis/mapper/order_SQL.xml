@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.order.jy.mapper.OrderMapper">
+	
+	<sql id="whereItem">
+		<if test="keyword!=null and keyword!=''">
+		AND (
+		    ITEM_NO LIKE '%' || #{keyword} || '%' OR 
+		    ITEM_NM LIKE '%' || #{keyword} || '%' OR
+		    ITEM_PRICE LIKE '%' || #{keyword} || '%' OR
+		    SALE_PRICE LIKE '%' || #{keyword} || '%' 
+		    )
+	    </if>
+	</sql>
+	
+	
+	<sql id="whereOrder">
+		 <if test="keyword!=null and keyword!=''">
+	        AND (
+	            TO_CHAR(STORE_ORDER_NO) LIKE '%' || #{keyword} || '%' OR 
+	            TO_CHAR(STORE_NO) LIKE '%' || #{keyword} || '%' OR 
+	            TO_CHAR(BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+	            TO_CHAR(STORE_ORDER_SUM) LIKE '%' || #{keyword} || '%' OR 
+	            STORE_ORDER_TITLE LIKE '%' || #{keyword} || '%' OR
+	            TO_CHAR(STORE_ORDER_DATE,'YYYY-MM-DD') LIKE '%' || #{keyword} || '%' OR
+	             CASE 
+		            WHEN STORE_ORDER_STATUS = '1' THEN '계산완료'
+		            WHEN STORE_ORDER_STATUS = '2' THEN '미승인'
+		            WHEN STORE_ORDER_STATUS = '3' THEN '회수'
+		            WHEN STORE_ORDER_STATUS = '4' THEN '반려'
+		        END LIKE '%' || #{keyword} || '%'
+	        )
+	        <!--  
+	        <if test="keyword == '계산완료.toString()'">
+	            AND STORE_ORDER_STATUS = '1'
+	        </if>
+	        <if test="keyword == '미승인'.toString()">
+	            AND STORE_ORDER_STATUS = '2'
+	        </if>
+	        <if test="keyword == '회수'.toString()">
+	            AND STORE_ORDER_STATUS = '3'
+	        </if>
+	        <if test="keyword == '반려'.toString()">
+	            AND STORE_ORDER_STATUS = '4'
+	        </if>
+	        -->
+	    </if>
+	</sql>
+	
+	
+	<!-- billNo에 해당하는 StoreOrderNo 찾기 -->
+	<select id="findStoreOrderNo" parameterType="int" resultType="int">
+		SELECT STORE_ORDER_NO 
+		FROM STORE_ORDER 
+		WHERE BILL_NO = #{billNo}
+	</select>
+	
+	
+	<!-- storeOrderNo 체크 -->
+	<select id="checkNo" parameterType="int" resultType="int">
+		SELECT * 
+	    FROM STORE_ORDER
+	    WHERE STORE_ORDER_NO = #{storeOrderNo}
+	</select>
+	
+	
+	<!-- 전체 행 개수 - 품목 전체 행 개수 -->
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM ITEM
+		WHERE 1 = 1
+		<include refid="whereItem"></include>
+	</select>
+	
+	
+	<!-- 가맹점 발주 insert
+		StoreOrderVO(storeOrderStatus=0, storeOrderSum=0, billNo=0, storeOrderTitle=null, 
+		storeOrderNo=0, storeNo=1, storeOrderDate=null, fileGroupNo=0, 
+		selectedItems=[
+			ItemVO(itemNo=3, itemNm=null, itemPrice=0, salePrice=0, storeNo=0, storeOrderNo=0), 
+			ItemVO(itemNo=5, itemNm=null, itemPrice=0, salePrice=0, storeNo=0, storeOrderNo=0), 
+			ItemVO(itemNo=16, itemNm=null, itemPrice=0, salePrice=0, storeNo=0, storeOrderNo=0), 
+			ItemVO(itemNo=28, itemNm=null, itemPrice=0, salePrice=0, storeNo=0, storeOrderNo=0), 
+			ItemVO(itemNo=13, itemNm=null, itemPrice=0, salePrice=0, storeNo=0, storeOrderNo=0)], 
+		storeOrderDetailList=null, storeNm=삼성관점, totalPrice=0, uploadFiles=null, fileGroupVO=null, 
+		rnum=0)
+	-->
+	<insert id="insertOrder" parameterType="kr.or.ddit.vo.StoreOrderVO" >
+		<selectKey resultType="int" order="BEFORE" keyProperty="storeOrderNo">
+			SELECT NVL(MAX(STORE_ORDER_NO),0)+1
+			FROM STORE_ORDER
+		</selectKey>
+		INSERT INTO STORE_ORDER(STORE_ORDER_NO, STORE_NO, STORE_ORDER_STATUS)
+		VALUES(#{storeOrderNo}, #{storeNo}, 2)
+	</insert>
+	
+	
+	<!-- 가맹점 발주 상세 insert-->
+	<insert id="insertOD" parameterType="kr.or.ddit.vo.StoreOrderDetailVO" >
+		INSERT INTO STORE_ORDER_DETAIL(STORE_ORDER_NO, ITEM_NO)
+		VALUES(#{storeOrderNo}, #{itemNo})
+	</insert>
+	
+	
+	<!-- 가맹점 발주 상세 update
+		pl/sql은 성공 시 -1 리턴
+	 -->
+	<update id="updateOD" parameterType="java.util.List">
+		<foreach collection="list" item="detail" open="DECLARE BEGIN" close="; END;" separator=";" >
+			UPDATE STORE_ORDER_DETAIL
+			SET STORE_ORDER_AMOUNT = #{detail.storeOrderAmount}, 
+			    STORE_ORDER_PRICE = #{detail.storeOrderPrice}
+			WHERE STORE_ORDER_NO = #{detail.storeOrderNo}
+			AND ITEM_NO = #{detail.itemNo}
+		</foreach>
+	</update>
+	
+	
+	<!-- 가맹점 발주 update 
+	 StoreOrderVO(storeOrderNo=159, storeNo=1, storeOrderDate=2025-01-15, fileGroupNo=20250115001, storeOrderStatus=0, 
+	 storeOrderSum=200000, selectedItems=null, storeOrderDetailList=null, totalPrice=0, 
+	 uploadFiles=[org.springframework.web.multipart.support.StandardMultipartHttpServletRequest$StandardMultipartFile@50e05bcc], 
+	 fileGroupVO=null)
+	-->
+	<update id="updateOrder" parameterType="kr.or.ddit.vo.StoreOrderVO">
+		UPDATE STORE_ORDER
+	    SET STORE_ORDER_SUM = #{storeOrderSum}
+	        , STORE_ORDER_DATE = #{storeOrderDate}
+	        , STORE_ORDER_TITLE = #{storeOrderTitle}
+	        <if test="fileGroupNo != null and fileGroupNo != ''">
+	        , FILE_GROUP_NO = #{fileGroupNo}
+	        </if>
+		WHERE STORE_ORDER_NO = #{storeOrderNo}
+	    AND STORE_NO = #{storeNo}
+	</update>
+	
+	
+	<!-- 가맹점 계산 목록 -->
+	<select id="billList" parameterType="hashMap" resultType="kr.or.ddit.vo.BillVO">
+		SELECT BILL_NO, ESTIMATE_NO2, BILL_TITLE, FILE_GROUP_NO
+		FROM BILL
+		WHERE 1 = 1
+<!-- 		<include refid="whereBill"></include> -->
+		AND BILL_NO BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+		ORDER BY BILL_NO
+	</select>
+	
+	
+	<!-- 가맹점 - 계산 전체 행 개수  -->
+	<select id="getBTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM BILL
+		WHERE 1 = 1
+<!-- 		<include refid="whereBill"></include> -->
+	</select>
+	
+
+	<!-- 가맹점별 발주 리스트 -->
+	<select id="gmjOrderList" parameterType="hashMap" resultMap="storeOrderMap">
+		SELECT  O.RNUM, O.STORE_ORDER_NO, O.STORE_NO, O.STORE_ORDER_DATE, O.FILE_GROUP_NO, O.BILL_NO
+				, O.STORE_ORDER_STATUS, O.STORE_ORDER_SUM, O.STORE_ORDER_TITLE, O.STORE_NM
+		        , O.FILE_GROUP_NM, O.FILE_REGDATE, O.FILE_GROUP_TY, O.FILE_NO, O.FILE_ORIGINAL_NAME
+		        , O.FILE_SAVE_NAME, O.FILE_EXT, O.FILE_SIZE, O.FILE_SAVE_LOCATE, O.FILE_MIME
+		        , O.FILE_FANCYSIZE, O.FILE_SAVE_DATE, O.FILE_DOWNCOUNT 
+		FROM (
+		    SELECT 
+		        ROW_NUMBER() OVER (ORDER BY STORE_ORDER_NO DESC) AS RNUM
+		        , SO.STORE_ORDER_NO, SO.STORE_NO, SO.STORE_ORDER_DATE, SO.FILE_GROUP_NO, SO.BILL_NO
+		        , SO.STORE_ORDER_STATUS, SO.STORE_ORDER_SUM, SO.STORE_ORDER_TITLE 
+		        , S.STORE_NM
+		        , FG.FILE_GROUP_NM, FG.FILE_REGDATE, FG.FILE_GROUP_TY
+		        , FD.FILE_NO, FD.FILE_ORIGINAL_NAME, FD.FILE_SAVE_NAME, FD.FILE_EXT 
+		        , FD.FILE_SIZE, FD.FILE_SAVE_LOCATE, FD.FILE_MIME, FD.FILE_FANCYSIZE 
+		        , FD.FILE_SAVE_DATE, FD.FILE_DOWNCOUNT
+		    FROM STORE_ORDER SO
+		    LEFT JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+            LEFT JOIN BILL B ON SO.BILL_NO = B.BILL_NO
+		    LEFT JOIN FILE_GROUP FG ON SO.FILE_GROUP_NO = FG.FILE_GROUP_NO
+		    LEFT JOIN FILE_DETAIL FD ON FG.FILE_GROUP_NO = FD.FILE_GROUP_NO
+			WHERE 1 = 1
+			AND SO.STORE_NO = #{storeNo}
+		    ) O
+		WHERE O.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+		 
+		<if test="keyword!=null and keyword!=''">
+		    AND (
+		        TO_CHAR(O.STORE_ORDER_NO) LIKE '%' || #{keyword} || '%' OR 
+		        TO_CHAR(O.STORE_NO) LIKE '%' || #{keyword} || '%' OR 
+		        TO_CHAR(O.BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+		        TO_CHAR(O.STORE_ORDER_SUM) LIKE '%' || #{keyword} || '%' OR 
+		        O.STORE_ORDER_TITLE LIKE '%' || #{keyword} || '%' OR
+		        TO_CHAR(O.STORE_ORDER_DATE,'YYYY-MM-DD') LIKE '%' || #{keyword} || '%'
+		        )
+		        <!-- 
+		        OR (
+	                #{keyword} IN ('계산완료', '미승인', '회수', '반려')
+	                AND O.STORE_ORDER_STATUS = 
+	                    CASE 
+	                        WHEN #{keyword} = '계산완료' THEN '1'
+	                        WHEN #{keyword} = '미승인' THEN '2'
+	                        WHEN #{keyword} = '회수' THEN '3'
+	                        WHEN #{keyword} = '반려' THEN '4'
+	                    END
+		            )
+		       	 )	
+		       	 -->
+		</if>
+	</select>
+	
+	
+	<!-- 본사 - 가맹점 발주 전체 행 개수 -->
+	<select id="getOTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM STORE_ORDER
+		WHERE 1 = 1		
+		<include refid="whereOrder"></include>
+	</select>
+	
+	
+	<!-- 가맹점 - 발주 전체 행 개수 -->
+	<select id="getGmjOtotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM STORE_ORDER
+		WHERE 1 = 1	
+		AND STORE_NO = #{storeNo}
+		<include refid="whereOrder"></include>
+	</select>
+	
+	
+	<!-- 가맹점 발주 회수 -->
+	<update id="cancelOrder" parameterType="java.util.List">
+		UPDATE STORE_ORDER
+		SET STORE_ORDER_STATUS = 3
+		WHERE STORE_ORDER_NO IN
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+			#{item.storeOrderNo}
+		</foreach>
+		AND STORE_NO IN
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+		    #{item.storeNo}
+		</foreach>
+	</update>
+	
+	<!-- 가맹점 발주 현황 -->
+	<select id="gmjStatusAjax" parameterType="kr.or.ddit.vo.StoreOrderVO" resultType="kr.or.ddit.vo.StoreOrderVO">
+		SELECT STORE_ORDER_STATUS AS storeOrderStatus,
+		       COUNT(*) AS storeOrderCount,
+		       SUM(STORE_ORDER_SUM) AS storeOrderSum
+		FROM STORE_ORDER
+		WHERE STORE_NO = #{storeNo}
+		<if test="storeOrderStatus != null">
+ 			AND STORE_ORDER_STATUS = #{storeOrderStatus} 
+		</if>
+		
+		<!-- 날짜 필터
+		<if test="storeOrderDate != null">
+			AND STORE_ORDER_DATE = #{storeOrderDate}
+		</if>
+		-->
+		
+		GROUP BY STORE_ORDER_STATUS
+		ORDER BY STORE_ORDER_STATUS
+	</select>
+	
+	
+	<!-- 본사 견적 목록 - 가맹점 발주 목록 -->
+	<select id="orderList" parameterType="hashMap" resultMap="storeOrderMap">
+		SELECT  O.RNUM, O.STORE_ORDER_NO, O.STORE_NO, O.STORE_ORDER_DATE, O.FILE_GROUP_NO
+				, O.STORE_ORDER_STATUS, O.STORE_ORDER_SUM, O.STORE_ORDER_TITLE, O.STORE_NM
+		        , O.FILE_GROUP_NM, O.FILE_REGDATE, O.FILE_GROUP_TY, O.FILE_NO, O.FILE_ORIGINAL_NAME
+		        , O.FILE_SAVE_NAME, O.FILE_EXT, O.FILE_SIZE, O.FILE_SAVE_LOCATE, O.FILE_MIME
+		        , O.FILE_FANCYSIZE, O.FILE_SAVE_DATE, O.FILE_DOWNCOUNT 
+		FROM (
+		    SELECT 
+		        ROW_NUMBER() OVER (ORDER BY STORE_ORDER_NO DESC) AS RNUM
+		        , SO.STORE_ORDER_NO, SO.STORE_NO, SO.STORE_ORDER_DATE, SO.FILE_GROUP_NO
+		        , SO.STORE_ORDER_STATUS, SO.STORE_ORDER_SUM, SO.STORE_ORDER_TITLE 
+		        , S.STORE_NM
+		        , FG.FILE_GROUP_NM, FG.FILE_REGDATE, FG.FILE_GROUP_TY
+		        , FD.FILE_NO, FD.FILE_ORIGINAL_NAME, FD.FILE_SAVE_NAME, FD.FILE_EXT 
+		        , FD.FILE_SIZE, FD.FILE_SAVE_LOCATE, FD.FILE_MIME, FD.FILE_FANCYSIZE 
+		        , FD.FILE_SAVE_DATE, FD.FILE_DOWNCOUNT
+		    FROM STORE_ORDER SO
+		    LEFT JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+		    LEFT JOIN FILE_GROUP FG ON SO.FILE_GROUP_NO = FG.FILE_GROUP_NO
+		    LEFT JOIN FILE_DETAIL FD ON FG.FILE_GROUP_NO = FD.FILE_GROUP_NO
+			WHERE 1 = 1
+		    ) O
+		WHERE O.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+<!-- 		<include refid="whereOrder"></include> -->
+	</select>
+	
+	
+	<!-- 본사 - 가맹점 발주 상세 조회 -->
+	<select id="orderDetailList" parameterType="hashMap" resultType="kr.or.ddit.vo.StoreOrderDetailVO">
+		SELECT SOD.STORE_ORDER_NO, SOD.ITEM_NO, SOD.STORE_ORDER_AMOUNT, SOD.STORE_ORDER_PRICE ,I.ITEM_NM     
+		FROM STORE_ORDER_DETAIL SOD
+		LEFT JOIN ITEM I ON SOD.ITEM_NO = I.ITEM_NO
+		WHERE SOD.STORE_ORDER_NO = #{storeOrderNo}
+		ORDER BY ITEM_NO
+	</select>
+	
+	
+	<!-- 본사 - 가맹점 발주 상태 update  -->
+	<update id="updateStatus" parameterType="list">
+	    <foreach collection="list" item="order" open="DECLARE BEGIN" close="; END;" separator=";" >
+	        UPDATE STORE_ORDER
+	        SET STORE_ORDER_STATUS = #{order.status}
+	        WHERE STORE_ORDER_NO = #{order.storeOrderNo}
+	    </foreach>
+	</update>
+	
+	
+	<!-- 본사 - storeorder 테이블에 billNO update -->
+	<update id="updateBillNo" parameterType="int">
+		UPDATE STORE_ORDER
+		SET BILL_NO = #{billNo}
+		WHERE STORE_ORDER_NO = #{storeOrderNo}
+		AND BILL_NO IS NULL
+	</update>
+	
+	
+	<!-- 발주 테이블 정보 가져오기 -->
+	<select id="getStoreOrder" parameterType="int" resultMap="storeOrderMap">
+		SELECT SO.STORE_ORDER_NO, SO.STORE_ORDER_DATE, SO.STORE_ORDER_SUM, SO.STORE_ORDER_TITLE, SO.STORE_ORDER_STATUS
+		       , SO.STORE_NO , S.STORE_NM
+		FROM STORE_ORDER SO
+		LEFT JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+		WHERE STORE_ORDER_NO = #{storeOrderNo}
+	</select>
+	
+	
+	<!-- 본사 - 계산서 발행 후 상태 변경(승인) -->
+	<update id="updateOStatus" parameterType="int">
+		UPDATE STORE_ORDER
+        SET STORE_ORDER_STATUS = 1
+        WHERE BILL_NO = #{billNo}
+	</update>
+	
+	
+	<!-- 본사 발주 현황 -->
+	<select id="statusAjax" parameterType="kr.or.ddit.vo.StoreOrderVO" resultType="kr.or.ddit.vo.StoreOrderVO">
+		SELECT STORE_ORDER_STATUS AS storeOrderStatus,
+		       COUNT(*) AS storeOrderCount,
+		       SUM(STORE_ORDER_SUM) AS storeOrderSum
+		FROM STORE_ORDER
+		<where>
+		<if test="storeOrderStatus != null">
+ 			STORE_ORDER_STATUS = #{storeOrderStatus} 
+		</if>
+		
+		<!-- 날짜 필터
+		<if test="storeOrderDate != null">
+			AND STORE_ORDER_DATE = #{storeOrderDate}
+		</if>
+		-->
+		</where> 
+		GROUP BY STORE_ORDER_STATUS
+		ORDER BY STORE_ORDER_STATUS
+	</select>
+	
+	
+	<resultMap type="kr.or.ddit.vo.StoreOrderVO" id="storeOrderMap">
+	    <result property="storeOrderNo" column="STORE_ORDER_NO"/>
+	    <result property="storeNo" column="STORE_NO"/>
+	    <result property="storeOrderDate" column="STORE_ORDER_DATE"/>
+	    <result property="fileGroupNo" column="FILE_GROUP_NO"/>
+	    <result property="storeOrderStatus" column="STORE_ORDER_STATUS"/>
+	    <result property="storeOrderSum" column="STORE_ORDER_SUM"/>
+	    <result property="storeOrderTitle" column="STORE_ORDER_TITLE"/>
+	    <result property="storeNm" column="STORE_NM"/>
+	    <result property="rnum" column="RNUM"/>
+	    
+	    <collection property="storeVO" resultMap="storeMap"></collection>
+	    <collection property="fileGroupVO" resultMap="fileGroupMap"></collection>
+	</resultMap>
+	
+	
+	<resultMap type="kr.or.ddit.vo.StoreVO" id="storeMap">
+		<result property="storeNo" column="STORE_NO"/>
+		<result property="storeLat" column="STORE_LAT"/>
+		<result property="storeLot" column="STORE_LOT"/>
+		<result property="storeAddr1" column="STORE_ADDR1"/>
+		<result property="storeZip" column="STORE_ZIP"/>
+		<result property="storeNm" column="STORE_NM"/>
+		<result property="storeAddr2" column="STORE_ADDR2"/>
+		<result property="storeOpenDate" column="STORE_OPEN_DATE"/>
+		<result property="storeStatus" column="STORE_STATUS"/>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileGroupVO" id="fileGroupMap">
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileGroupNm" column="FILE_GROUP_NM"/>
+		<result property="fileRegdate" column="FILE_REGDATE"/>
+		<result property="fileGroupTy" column="FILE_GROUP_TY"/>	
+		
+		<collection property="fileDetailVOList" resultMap="fileDetailMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileDetailVO" id="fileDetailMap">
+		<result property="fileNo" column="FILE_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileOriginalName" column="FILE_ORIGINAL_NAME"/>
+		<result property="fileSaveName" column="FILE_SAVE_NAME"/>
+		<result property="fileExt" column="FILE_EXT"/>
+		<result property="fileSize" column="FILE_SIZE"/>
+		<result property="fileSaveLocate" column="FILE_SAVE_LOCATE"/>
+		<result property="fileMime" column="FILE_MIME"/>
+		<result property="fileFancysize" column="FILE_FANCYSIZE"/>
+		<result property="fileSaveDate" column="FILE_SAVE_DATE"/>
+		<result property="fileDowncount" column="FILE_DOWNCOUNT"/>
+	</resultMap>
+	
+</mapper>

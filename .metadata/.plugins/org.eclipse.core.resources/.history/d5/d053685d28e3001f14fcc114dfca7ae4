@@ -1,0 +1,298 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: #fff; /* 흰 배경 */
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+}
+
+.header {
+    position: absolute;
+    top: 20px; /* 위쪽 여백 */
+    left: 20px; /* 왼쪽 여백 */
+    display: flex;
+    align-items: center;
+    gap: 10px; /* 로고와 사이트명 간 간격 */
+}
+
+.logo {
+    width: 100px; /* 로고 크기 */
+    height: auto; /* 비율 유지 */
+    padding-right: -10;
+}
+
+.header .site-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4F200D;
+}
+
+section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh; /* 화면 높이 */
+    width: 100%;
+    position: relative;
+}
+
+.signup-container {
+    text-align: left;
+    width: 100%;
+    max-width: 400px; /* 폼 최대 너비 */
+    padding: 0 20px;
+/*     box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15); */
+/*     border-radius: 4px; */
+}
+
+.signup-container h1 {
+    text-align: center;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    font-weight: bold;
+    margin-left:-25;
+}
+
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #333;
+    font-weight: bold;
+}
+
+.input-field{
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.input-field-half{
+    width: 50%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+/* 설명 문구 스타일 */
+.field-description {
+    font-size: 0.8rem; /* 작고 읽기 쉬운 크기 */
+    color: #6c757d; /* 약간 어두운 회색 */
+    margin-top: 5px; /* 위 요소와 간격 */
+    line-height: 1.4; /* 줄 간격 */
+}
+
+.phone-inputs {
+    display: flex;
+    gap: 10px;
+}
+
+.input-field-phone {
+    width: calc(33.3% - 6px);
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.btn-signup {
+    width: 100%;
+    padding: 10px;
+    background-color: #4F200D; 
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+.btn-signup:hover {
+    background-color: #856543;
+}
+
+.footer {
+    margin-top: 20px;
+    text-align: center;
+    width: 100%;
+    font-size: 0.9rem;
+    color: #777;
+}
+
+/* 본사/가맹점 nav-tab  */
+
+/* 본사 폼은 기본적으로 표시 */
+#bonsa {
+    display: block;
+}
+
+/* 가맹점 폼은 기본적으로 숨김 */
+#store {
+    display: none;
+}
+
+/* 탭 활성화 시 상태 전환 */
+.tab-pane.show.active {
+    display: block;
+}
+
+.nav-tabs .nav-link.active {
+    border: none;
+    position: relative;
+    color: #F5F5DC;
+}
+
+.nav-tabs .nav-link.active, .nav-tabs .nav-item.show .nav-link {
+    color: var(--bs-nav-tabs-link-active-color);
+    background-color: var(--bs-nav-tabs-link-active-bg);
+    border-color: var(--bs-nav-tabs-link-active-border-color);
+}
+.nav-tabs, .nav-tabs .nav-link {
+    border: none;
+}
+.nav-tabs .nav-link {
+    margin-bottom: calc(-1* var(--bs-nav-tabs-border-width));
+    border: var(--bs-nav-tabs-border-width) solid transparent;
+    border-top-left-radius: var(--bs-nav-tabs-border-radius);
+    border-top-right-radius: var(--bs-nav-tabs-border-radius);
+}
+.nav-link {
+    display: block;
+    padding: var(--bs-nav-link-padding-y) var(--bs-nav-link-padding-x);
+    font-size: var(--bs-nav-link-font-size);
+    font-weight: var(--bs-nav-link-font-weight);
+    color: var(--bs-nav-link-color);
+    text-decoration: none;
+    background: none;
+    border: 0;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+}
+a {
+    text-decoration: none;
+}
+a {
+    color: rgba(var(--bs-link-color-rgb), var(--bs-link-opacity, 1));
+    text-decoration: underline;
+}
+*, *:before, *:after {
+    box-sizing: border-box;
+}
+user agent stylesheet
+a:-webkit-any-link {
+    color: -webkit-link;
+    cursor: pointer;
+    text-decoration: underline;
+}
+user agent stylesheet
+li {
+    text-align: -webkit-match-parent;
+}
+.nav-tabs {
+    --bs-nav-tabs-border-width: 1px;
+    --bs-nav-tabs-border-color: #dee2e6;
+    --bs-nav-tabs-border-radius: .25rem;
+    --bs-nav-tabs-link-hover-border-color: #e9ecef #e9ecef #dee2e6;
+    --bs-nav-tabs-link-active-color: #F5F5DC;
+    --bs-nav-tabs-link-active-bg: #F5F5DC;
+    --bs-nav-tabs-link-active-border-color: #dee2e6 #dee2e6 #f2f7ff;
+    border-bottom: var(--bs-nav-tabs-border-width) solid var(--bs-nav-tabs-border-color);
+}
+.nav {
+    --bs-nav-link-padding-x: 1rem;
+    --bs-nav-link-padding-y: .5rem;
+    --bs-nav-link-font-weight: ;
+    --bs-nav-link-color: rgb(50, 58, 67);
+    --bs-nav-link-hover-color: var(--bs-link-hover-color);
+    --bs-nav-link-disabled-color: #6c757d;
+    display: flex
+;
+    flex-wrap: wrap;
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+}
+user agent stylesheet
+ul {
+    list-style-type: disc;
+}
+
+/* 버튼이 우측 상단에 위치하도록 스타일링 */
+.dataInput {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+    padding: 10px 15px;
+    position: relative; /* 버튼이 위치를 잃지 않도록 설정 */
+    z-index: 10; /* 버튼이 다른 요소 위로 올라오도록 설정 */
+}
+
+/* 중복확인 버튼 전용 스타일 */
+.btn-dup-check,
+.btn-post {
+    background-color: #FFD93D;
+    color: rgb(50, 58, 67);
+    border: none;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    white-space: nowrap;
+    font-weight: bold;
+}
+
+.btn-dup-check:hover,
+.btn-post:hover {
+    background-color: #FFD93D;
+}
+
+.btn-data{
+	background-color: #FFD93D;
+    color: rgb(50, 58, 67);
+    border: none;
+    padding: 10px 20px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+/* 로고와 회원가입 제목을 한 줄에 배치 */
+.signup-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;  /* 로고와 제목 사이 간격 */
+    margin-bottom: 20px;
+    justify-content: center;
+    margin-left: -28;
+}
+	
+/* 이메일 입력 필드와 드롭다운을 반반 정렬 */
+.email-container {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+/* 이메일 입력 필드 */
+#emailId {
+    flex: 1;
+    max-width: 50%;
+}
+
+/* 이메일 드롭다운 스타일 (Bootstrap 적용) */
+#emailDomain {
+    flex: 1;
+    max-width: 50%;
+}
+	
+	

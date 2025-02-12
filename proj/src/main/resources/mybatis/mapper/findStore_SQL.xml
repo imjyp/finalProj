@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.findingstore.jc.mapper.findStoreMapper">
+	
+	<select id="map" parameterType="hashMap">
+	select * from store
+	where 1=1
+	<if test="keyword!=null and keyword!=''">
+			AND (
+				store_addr1 like '%' || #{keyword} || '%' OR 
+				store_nm like '%' || #{keyword} || '%'
+	        )
+	    </if>
+	</select>
+	
+	
+</mapper>

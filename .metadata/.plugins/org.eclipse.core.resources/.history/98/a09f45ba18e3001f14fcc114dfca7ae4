@@ -1,0 +1,567 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="sec"
+	uri="http://www.springframework.org/security/tags"%>
+
+<html lang="ko">
+
+<head>
+
+
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAFE@BEAN</title>
+<link rel="stylesheet" href="/css/common.css">
+
+
+</head>
+<style>
+
+/* alert-badge */
+.alert-badge {
+	position: absolute;
+	top: -4px !important;
+	right: -7px !important;
+	transform: translate(50%, -50%);
+	background-color: yellow;
+	color: black;
+	border-radius: 20%;
+	padding: 5px 15px;;
+	gmj03 font-size: 15px;
+	line-height: 1;
+	width: 40px;
+	height: 25px !important;
+}
+
+.slider-container {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.slider {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* Chrome, Safari and Opera */
+.slider::-webkit-scrollbar {
+  display: none;
+  
+}
+
+.slide-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  color: #999;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 24px;
+  transition: color 0.3s ease;
+}
+
+.slide-arrow:hover {
+  color: #333;
+}
+
+.prev-arrow {
+  left: -30px;
+}
+
+.next-arrow {
+  right: -30px;
+}
+.mainCont{
+	background-color:white !important;
+	height:50%;
+}
+.slide {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 280px;
+  margin-right: 30px;
+  scroll-snap-align: center;
+  background-color: #fff;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease;
+  overflow: hidden;
+  margin-bottom:30px;
+}
+
+.slide img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.slide:hover img {
+  transform: scale(1.05);
+}
+
+.slide-content {
+  padding: 20px;
+}
+
+.slide-content .menunm {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+
+</style>
+<!-- 로그인 권한 -->
+<sec:authorize access="isAuthenticated()">
+	<!-- 로그인 시 사이드바 시작-->
+	<%@ include file="./include/header.jsp"%>
+
+</sec:authorize>
+<!-- 로그인 시 사이드바 끝-->
+
+<!-- 비회원 메인 페이지(사이드바 없음) 시작 -->
+<!-- 비회원 메인 페이지(사이드바 없음) 끝 -->
+
+<body>
+	<div id="main">
+		<div class="wrapper ">
+			<%@ include file="./include/top.jsp"%>
+
+
+	<div class="mainEvent basicSwiper">
+			<div class="swiper swiper-container swiper-container-horizontal">
+				<ul class="swiper-wrapper" style="transition-duration: 0ms; transform: translate3d(-7680px, 0px, 0px);"><li class="swiper-slide swiper-slide-duplicate" data-swiper-slide-index="8" style="width: 1280px; visibility: hidden;"><a href="/kor/promotion/detail.do?page=1&amp;seq=320&amp;utm_medium=Corp_site&amp;utm_source=Main_banner&amp;utm_campaign=0408_Strawberry"><img src="/upload/main/banner/1714371904239.jpg" alt="신선한 우유와 딸기의 진한 만남_1등급 원유 사용 베리 스트로베리 맥플러리, 스트로베리콘"></a></li>
+					<li class="swiper-slide" data-swiper-slide-index="0" style="width: 1920px; visibility: hidden;"><a href="/itdmenu"><img src="/upload/1.png" ></a></li>
+					
+					<li class="swiper-slide" data-swiper-slide-index="1" style="width: 1920px; visibility: hidden;"><a href="/itdmenu"><img src="/upload/2.png" ></a></li>
+					
+					<li class="swiper-slide" data-swiper-slide-index="2" style="width: 1920px; visibility: hidden;"><a href="/companyInfo/test"><img src="/upload/3.png" ></a></li>
+					
+			<li class="swiper-slide swiper-slide-duplicate" data-swiper-slide-index="0" style="width: 1280px; visibility: hidden;"><a href="/kor/promotion/detail.do?seq=559&amp;utm_medium=pc_corp_site&amp;utm_source=Main_banner&amp;utm_campaign=2025QPCLE"><img src="/upload/main/banner/1737105354959.jpg" alt="진한 고기 풍미에 매콤함까지 꽉 찬 맛_ 신제품 치즈 할라피뇨 더블 쿼터파운더 치즈 제품 및 치즈 할라피뇨 쿼터파운더 치즈 제품 사진"></a></li></ul>
+			<span class="swiper-notification" aria-live="assertive" aria-atomic="true"></span></div>
+
+			<button type="button" class="ctrl next">다음 배너 보기</button>
+			<div class="indicator">
+				<span role="text" class="timer"><span class="bar" style="width: 72.7835%; overflow: hidden;"></span></span>
+				<button type="button" class="play pause">배너 롤링 정지</button><!-- 재생표시 <button type="button" class="play">재생</button> -->
+			</div>
+		</div>
+			<!-- //mainEvent -->
+			<div class="contArea mainCont">
+			<div >
+				<a href="/findingstore" class="btn btn-warning rounded-pill">매장 찾기</a>
+				<a href="/itdmenu" class="btn btn-warning rounded-pill">메뉴 소개</a>
+			
+			</div>
+			<div class="slider-container">
+  <div class="slider">
+    <c:forEach var="menu" items="${menuList }">
+      <div class="slide">
+        <img src="/resources${menu.fileDetailList[0].fileSaveLocate}" alt="${menu.menuNm }">
+        <div class="slide-content">
+          <strong class="menunm">${menu.menuNm }</strong>
+          <br><br>
+          <strong class="menucn">${menu.menuCn }</strong>
+        </div>
+      </div>
+    </c:forEach>
+  </div>
+</div>
+
+			
+			</div>
+			<form id="searchForm" name="searchForm" method="get">
+				<input type="hidden" name="seq" id="seq"> <input
+					type="hidden" name="urlCode" id="urlCode"> <input
+					type="hidden" name="linkurl" id="linkurl">
+			</form>
+		</div>
+	</div>
+	<!-- //container -->
+
+	<footer class="footer">
+
+		<div class="footArea">
+			<%@ include file="./include/footer.jsp"%>
+			<!-- 
+    <div class="fInfo">
+        <p class="copy">COPYRIGHT © 2019 ALL RIGHTS RESERVED BY McDonald's.</p>
+    </div>
+	-->
+		</div>
+
+	</footer>
+	<!-- //footer -->
+	</div>
+	<!-- //wrapper -->
+
+
+	<div class="dimmed"></div>
+
+
+	<script>
+		function gtag() {
+			dataLayer.push(arguments);
+		}
+		gtag('js', new Date());
+
+		gtag('config', 'UA-15032749-2');
+	</script>
+
+
+	<script>
+		$(window).on('load', function() {
+			// commonJs.menu.TopActive(idx(0~3))	menu : 0 , store : 1 , what's news : 2 , story : 3 서브페이지에 메뉴 순번에 맞춰서 활성화
+			// commonJs.menu.TopDeActive()			활성화 해제
+			// commonJs.menu.TopActive( 2 );
+			setWebTitle();
+		});
+		function loadTemplate(id) {
+			return document.getElementById(id).innerHTML;
+		}
+		function replaceTemplate(templateStr, data) {
+			var result = templateStr;
+			for ( var key in data) {
+				var pattern = new RegExp("{" + key + "}", "g");
+				result = result.replace(pattern, data[key]);
+			}
+			return result;
+		}
+		function makeHtml(id, data) {
+			return replaceTemplate(loadTemplate(id), data);
+		}
+		function setWebTitle() {
+
+			let title = $("[data-title]").data("title");
+			let des = $("[data-desc]").data("desc");
+			let tab = $("[data-tab]").data("tab");
+
+			let defaultTitle = $(document).attr("title");
+
+			if (title != undefined && $.trim(title) != "N") {
+				if (tab != undefined && $.trim(tab) != "") {
+					$(document).attr("title",
+							title + " > " + tab + " | " + defaultTitle);
+				} else {
+					$(document).attr("title", title + " | " + defaultTitle);
+				}
+			}
+			if (des != undefined && $.trim(des) != "") {
+				$("#description").attr("contents",
+						$("#description").attr("contents") + " " + des);
+			}
+
+		}
+		function setCookie(name, value, expiredays) {
+			var todayDate = new Date();
+			todayDate.setDate(todayDate.getDate() + expiredays);
+			document.cookie = name + "=" + escape(value) + "; path=/; expires="
+					+ todayDate.toGMTString() + ";"
+		}
+		function getCookie(cname) {
+			var name = cname + "=";
+			var decodedCookie = decodeURIComponent(document.cookie);
+			var ca = decodedCookie.split(';');
+			for (var i = 0; i < ca.length; i++) {
+				var c = ca[i];
+				while (c.charAt(0) == ' ') {
+					c = c.substring(1);
+				}
+				if (c.indexOf(name) == 0) {
+					return c.substring(name.length, c.length);
+				}
+			}
+			return "";
+		}
+		function altEscapeTag() {
+			$("img")
+					.each(
+							function(i, ob) {
+								$(ob).attr(
+										"alt",
+										$(ob).attr("alt").replace(
+												/(<([^>]+)>)/ig, ""));
+							});
+		}
+	</script>
+	<!-- <script type="text/javascript" src="/cert/js/KmcCert.js"></script> -->
+	<script type="text/javascript">
+	
+	let slides = document.querySelectorAll('.slide');
+	let currentSlide = 0;
+
+	setInterval(() => {
+	  currentSlide = (currentSlide + 1) % slides.length;
+	  document.querySelector('.slider').scrollTo({
+	    left: currentSlide * (1000 + 50),
+	    behavior: 'smooth'
+	  });
+	}, 3000); 
+
+	
+		var init_page = 0;
+		var totalPage = 0;
+		var isCertificate = false;
+
+		$(document).ready(function() {
+
+			daylock();
+			getList(1);
+		});
+		function getList(page_val) {
+			$.post("/kor/mainContent.do", {
+				page : page_val
+			}, function(data) {
+				if (data.is_ok == "ok") {
+					totalPage = data.totalPage;
+					init_page = data.page;
+					for (var i = 0; i < data.list.length; i++) {
+						$("#menuList").append(addList(data.list[i]));
+					}
+					if (page_val > 1) {
+						$("[data-seq='" + data.list[0].seq + "']").focus();
+					}
+					altEscapeTag();
+					if (totalPage == page_val) {
+						$("#btnMore").hide();
+					}
+				} else {
+					alert("목록가져오기에 실패하였습니다\관리자에게 문의하세요");
+				}
+			}
+
+			);
+
+		}
+		function daylock() {
+			$("[data-daylock]").each(
+					function(i, ob) {
+						$(ob).on(
+								"click",
+								function(e) {
+									if ($(this).prop("checked")) {
+										var name = $(this).data("daylock");
+										var day = $(this).data("daylock-day");
+										if (day == undefined || day == null
+												|| day == null
+												|| isNaN(day) == true) {
+											setCookie(name, "lock", 7);
+										} else {
+											setCookie(name, "lock", day);
+										}
+										commonJs.popup.image
+												.hide($("#popNoti"));
+									}
+								});
+
+					});
+		}
+		function addList(data) {
+			if (data.content_type == "I")
+				return makeHtml("card1", data);
+			else
+				return makeHtml("card2", data);
+		}
+		function goEventLink(evient_seq) {
+			$("#seq").val(evient_seq);
+			$("#searchForm").attr("action", "/kor/promotion/detail.do");
+			$("#searchForm").submit();
+		}
+
+		function more() {
+			getList(init_page + 1);
+		}
+
+		function removeVideo() {
+			var now = new Date();
+			var hours = now.getHours();
+			var minutes = now.getMinutes();
+
+			var start = Date.parse('2020-07-30 04:00:00') / 1000;
+			var end = Date.parse('2020-07-30 10:30:00') / 1000;
+			var now = Date.parse('2020-07-30 ' + hours + ':' + minutes + ':00') / 1000;
+
+			if ((now >= start) && (now <= end)) {
+				$('.video').remove();
+			}
+
+		}
+
+		function goDetail(element) {
+
+			var data = $(element).attr("data").split(",");
+
+			var seq = data[0];
+			var certification = data[1];
+			var linkurl = data[2];
+
+			var form_data = KmcCert.getUrlCode(seq, "json");
+
+			$("#seq").val(seq);
+			$("#linkurl").val(linkurl);
+			$("#urlCode").val(form_data["urlCode"]);
+
+			if (certification !== "N" && isCertificate) {
+				certification = 'N';
+			}
+
+			if (certification !== "N") {
+				var certPopup = window.open('about:blank', 'certviewer',
+						'width=846,height=700,scrollbars=no,resize=no');
+				certPopup.resizeTo(846, 700);
+				$("#searchForm").attr("action", "/cert/popup.do");
+				$("#searchForm").attr("target", "certviewer");
+				$("#searchForm").submit();
+			} else {
+				self.location.href = linkurl;
+			}
+
+		}
+
+		function certificate() {
+			isCertificate = true;
+			self.location.href = $("#linkurl").val();
+		}
+	</script>
+	<script id="card1" type="text/templet">
+<li><a href="#" onclick="goDetail(this)" data-seq="{seq}" data="{seq},{certification},{pc_kor_link}">
+								<div class="tmb"><img src="{pc_kor_image_url}" alt=""></div>
+								<div class="con">
+									<span class="blind">{pc_kor_alt}</span>
+									<strong class="tit">{pc_kor_content}</strong>
+								</div>
+							</a></li>
+</script>
+	<script id="card2" type="text/templet">
+<li class="official"><a href="#" onclick="goDetail(this)"  data-seq="{seq}" data="{seq},{certification},{pc_kor_link}">
+								<strong class="tit">{pc_kor_alt}</strong>
+								<span class="txt">{pc_kor_content}</span>
+							</a></li>
+</script>
+
+
+</body>
+</html>
+<style>
+/* 전체 컨테이너 스타일링 */
+.contArea.mainCont {
+    padding: 50px 0;
+    background-color: #f8f9fa;
+}
+
+.inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* 메뉴 리스트 스타일링 */
+.whatsNew {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 30px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.whatsNew li {
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+.whatsNew li:hover {
+    transform: translateY(-5px);
+}
+
+/* 썸네일 이미지 스타일링 */
+.tmb {
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+}
+
+.tmb img {
+    width: 80%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.whatsNew li:hover .tmb img {
+    transform: scale(1.05);
+}
+
+/* 콘텐츠 영역 스타일링 */
+.con {
+    padding: 20px;
+}
+
+.con .tit {
+    display: block;
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+/* 더보기 버튼 스타일링 */
+.btnMore {
+    text-align: center;
+    margin-top: 50px;
+}
+
+.btnMore .more {
+    display: inline-block;
+    padding: 15px 40px;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 25px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+.btnMore .more:hover {
+    background-color: #45a049;
+}
+
+/* 버튼 컨테이너 스타일링 */
+.contArea.mainCont > div:first-child {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+/* 버튼 스타일링 */
+.btn.btn-warning.rounded-pill {
+    margin: 0 10px;
+    padding: 10px 25px;
+    display: inline-block;
+}
+
+
+.menunm{
+font-weight: bold;
+}
+
+</style>
+
+

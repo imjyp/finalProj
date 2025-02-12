@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.fullcalendarStore.jm.mapper.CalendarStoreMapper">
+ 
+ 	<!-- CalendarStore SQL 시작 -->
+ 
+	<!-- 일정리스트 조회 -->
+	<select id="getAllStore" resultType="CalendarVO" >
+		SELECT 
+		    A.CAL_NM,
+		    A.CAL_TITLE,
+		    A.CAL_CONTENT,
+		    A.CAL_START,
+		    A.CAL_END,
+		    A.TEXT_COLOR,
+		    A.BG_COLOR,
+		    A.USER_NO,
+		    A.CALENDAR_TY,
+		    A.FILE_GROUP_NO,
+		    A.CAL_STATUS,
+		    A.CAL_REG_DATE,
+		    A.READER_NO,
+    		W.USER_NM AS READER_NM,
+		    A.CAL_CNT,
+		    U.USER_NM
+		FROM CALENDAR A
+		JOIN TB_USER U
+		    ON A.USER_NO = U.USER_NO
+		LEFT JOIN TB_USER W
+    		ON A.READER_NO = W.USER_NO
+		WHERE A.CALENDAR_TY = 1
+		AND A.CAL_STATUS = 1
+		ORDER BY A.CAL_NM DESC
+	</select>
+	
+	<!-- 일정등록 -->
+	<insert id="saveEvent" parameterType="CalendarVO">
+    INSERT INTO calendar (
+        cal_nm,
+        cal_title,
+        cal_content,
+        cal_start,
+        cal_end,
+        text_color,
+        bg_color,
+        user_no,
+        reader_no,
+        calendar_ty
+    ) VALUES (
+		(SELECT NVL(MAX(cal_nm), 0) + 1 FROM calendar),
+        #{calTitle},
+        #{calContent},
+        #{calStart},
+        #{calEnd},
+        #{textColor},
+        #{bgColor},
+        #{userNo},
+        #{readerNo},
+        1
+    )
+	</insert>
+	
+	<!-- 일정수정 -->
+	<update id="updateEvent" parameterType="CalendarVO">
+		UPDATE calendar
+		<set>
+			<if test="calTitle !=null and calTitle !=''">
+				cal_title = #{calTitle}
+			</if>	
+			<if test="calContent !=null and calContent !=''">
+		        ,cal_content = #{calContent}
+	        </if>	
+			<if test="calStart !=null">
+		        ,cal_start = #{calStart}
+	        </if>	
+			<if test="calEnd !=null">
+		        ,cal_end = #{calEnd}
+	        </if>	
+			<if test="textColor !=null and textColor !=''">
+		        ,text_color = #{textColor}
+	        </if>	
+			<if test="bgColor !=null and bgColor !=''">
+		        ,bg_color = #{bgColor}
+	        </if>
+	        <if test="readerNo !=null and readerNo !=''">
+		        ,reader_no = #{readerNo}
+	        </if>
+	       </set>
+		WHERE 
+        	cal_nm = #{calNm}
+	</update>
+	
+	<!-- 일정삭제 -->
+	<delete id="deleteEvent" parameterType="CalendarVO">
+		update calendar
+		set cal_status=2
+		WHERE cal_nm = #{calNm}
+	</delete>
+	
+	<insert id="insertEvent" parameterType="hashMap">
+		insert into calendar (CAL_NM, CAL_TITLE, CAL_CONTENT,CAL_START, CAL_END,USER_NO, CALENDAR_TY, CAL_REG_DATE, READER_NO)
+		values((select nvl(max(cal_nm),0)+1 from calendar), #{calTitle}, #{calContent}, #{calStart}, #{calEnd}, #{userNo}, 1, SYSDATE, #{readerNo})
+	</insert>
+	
+	<update id="updateContent">
+	</update>
+	
+
+</mapper>

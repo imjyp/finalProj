@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.item.jy.mapper.ItemMapper">
+	
+	<sql id="where">
+		<if test="keyword!=null and keyword!=''">
+		AND (
+		    ITEM_NO LIKE '%' || #{keyword} || '%' OR 
+		    ITEM_NM LIKE '%' || #{keyword} || '%' OR
+		    ITEM_PRICE LIKE '%' || #{keyword} || '%' OR
+		    SALE_PRICE LIKE '%' || #{keyword} || '%' 
+		    )
+	    </if>
+	</sql>
+	
+	<!-- 품목 리스트 -->
+	<select id="list" parameterType="hashMap" resultType="kr.or.ddit.vo.ItemVO">
+		SELECT ITEM_NO, ITEM_NM, ITEM_PRICE, SALE_PRICE
+		FROM ITEM
+		WHERE 1 = 1
+		<include refid="where"></include>
+		AND ITEM_NO BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+		ORDER BY ITEM_NO
+	</select>
+	
+	<!-- 전체 행 개수 -->
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM ITEM
+		WHERE 1 = 1
+		<include refid="where"></include>
+	</select>
+	
+	<!-- 
+	jsp에서 사용할 List<ItemVO> selectedItems
+	public List<ItemVO> selectedItems(List<Integer> items);
+	
+	items : [3,5,16,28,13]
+	 -->
+	<select id="selectedItems" parameterType="list" resultType="kr.or.ddit.vo.ItemVO">
+		SELECT ITEM_NO, ITEM_NM, ITEM_PRICE, SALE_PRICE, ITEM_DEL
+		FROM ITEM
+		WHERE 1 = 1
+		AND   ITEM_NO in
+	    <foreach collection="items" item="item" index="index" open="(" close=")" separator=",">
+	    	#{item}
+	    </foreach>
+	</select>
+	
+</mapper>

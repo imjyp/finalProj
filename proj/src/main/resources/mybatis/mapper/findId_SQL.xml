@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.find.mapper.FindIdMapper">
+	
+	<select id="findId" resultType="TBUserVO" parameterType="hashMap">
+		select user_no from tb_user
+		where user_nm = #{userNm}
+		and user_mail=#{userMail}
+	</select>
+	
+	<select id="findPw" resultType="int" parameterType="hashMap">
+	select count(*)
+	from tb_user
+	where user_no=#{userNo}
+	and user_nm=#{userNm}
+	and user_mail=#{userMail}
+	</select>
+	
+	<update id="pwdUpdate" parameterType="hashMap">
+		update tb_user
+		set user_pw=#{newPwd}
+		where user_no=#{userNo}
+		and user_nm=#{userNm}
+		and user_mail=#{userMail}
+	</update>
+	
+	
+	<update id="updatepwd" parameterType="hashMap">
+		update tb_user
+		set user_pw=#{userPw}
+		where user_no=#{userNo}
+	</update>
+</mapper>

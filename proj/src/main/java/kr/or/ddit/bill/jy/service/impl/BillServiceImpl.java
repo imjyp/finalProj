@@ -1,0 +1,325 @@
+package kr.or.ddit.bill.jy.service.impl;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import kr.or.ddit.alert.jy.mapper.AlertMapper;
+import kr.or.ddit.alert.jy.service.AlertService;
+import kr.or.ddit.bill.jy.mapper.BillMapper;
+import kr.or.ddit.bill.jy.service.BillService;
+import kr.or.ddit.budget.jc.mapper.BudgetMapper;
+import kr.or.ddit.inventory.jw.mapper.InventoryMapper;
+import kr.or.ddit.inventory.jw.vo.InventoryVO;
+import kr.or.ddit.order.jy.mapper.OrderMapper;
+import kr.or.ddit.order.jy.service.OrderService;
+import kr.or.ddit.util.UploadController;
+import kr.or.ddit.vo.BillVO;
+import kr.or.ddit.vo.EmployeeVO;
+import kr.or.ddit.vo.HeadBudgetVO;
+import kr.or.ddit.vo.StoreEmpVO;
+import kr.or.ddit.vo.StoreOrderDetailVO;
+import kr.or.ddit.vo.StoreOrderVO;
+import kr.or.ddit.vo.StoreVO;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Service
+public class BillServiceImpl implements BillService {
+
+	@Autowired
+	BillMapper billMapper;
+	
+	@Autowired
+	UploadController uploadController;
+	
+	@Autowired
+	OrderMapper orderMapper;
+	
+	@Autowired
+	BudgetMapper budgetMapper;
+	
+	@Autowired
+	InventoryMapper inventoryMapper;
+
+	@Autowired
+	AlertService alertService;
+	
+	@Autowired
+	AlertMapper alertMapper;
+	
+	// 본사 계산 목록
+	@Override
+	public List<BillVO> list(Map<String, Object> map) {
+		return this.billMapper.list(map);
+	}
+
+	// 본사 계산 전체 행 개수
+	@Override
+	public int getTotal(Map<String, Object> map) {
+		return this.billMapper.getTotal(map);
+	}
+	
+	// 본사 계산서 상세
+	@Override
+	public BillVO billDetail(Map<String, Object> map) {
+		return this.billMapper.billDetail(map);
+	}
+
+	// 본사 발주 반려
+	@Transactional
+	@Override
+	public int updOS(List<StoreOrderVO> storeOrderList) {
+		return this.billMapper.updOS(storeOrderList);
+	}
+	
+	// 본사 계산 insert 및 발주 billNo update
+	@Transactional
+	@Override
+	public int insertBill(BillVO billVO) {
+		
+		// 다중 파일 업로드 처리(파일 + DB)
+		MultipartFile[] uploadFiles = billVO.getUploadFiles();
+		
+		if(uploadFiles !=null && uploadFiles[0].getOriginalFilename().length() >0) {
+			
+			long fileGroupNo = this.uploadController.multiImageUpload(uploadFiles);
+			log.info("updateOrder -> fileGroupNo: "+fileGroupNo);
+			log.info("updateOrder -> uploadFiles: " + Arrays.toString(billVO.getUploadFiles()));
+			
+			/*
+			 StoreOrderVO(storeOrderNo=159, storeNo=1, storeOrderDate=2025-01-15, fileGroupNo=20250115001, storeOrderStatus=0, 
+			 storeOrderSum=200000, selectedItems=null, storeOrderDetailList=null, totalPrice=0, 
+			 uploadFiles=[org.springframework.web.multipart.support.StandardMultipartHttpServletRequest$StandardMultipartFile@50e05bcc], 
+			 fileGroupVO=null)
+			 */
+			billVO.setFileGroupNo(fileGroupNo);
+		}
+				
+		return this.billMapper.insertBill(billVO);
+	}
+
+	// 본사 계산 update 및 발주 상태 승인으로 변경
+	@Transactional
+	@Override
+	public int updateBill(BillVO billVO) {
+		log.info("updateBill -> billVO: "+ billVO);
+		
+		// 다중 파일 업로드 처리(파일 + DB)
+		MultipartFile[] uploadFiles = billVO.getUploadFiles();
+		
+		if(uploadFiles !=null && uploadFiles[0].getOriginalFilename().length() >0) {
+			
+			long fileGroupNo = this.uploadController.multiImageUpload(uploadFiles);
+			log.info("updateBill -> fileGroupNo: "+fileGroupNo);
+			log.info("updateBill -> uploadFiles: " + Arrays.toString(billVO.getUploadFiles()));
+			
+			billVO.setFileGroupNo(fileGroupNo);
+		}
+		
+		// 1. bill update
+		int result = this.billMapper.updateBill(billVO);
+		log.info("updateBill -> result: " + result);
+		
+		// 2. StoreOrder 상태 update(승인)
+		int billNo = billVO.getBillNo();
+		log.info("updateBill -> billNo : " + billNo);
+		
+		int updateStatusResult = orderMapper.updateOStatus(billNo);
+		log.info("updateBill -> updateStatusResult : " + updateStatusResult);
+		
+		// 3. 본사 예산 insert
+		HeadBudgetVO headBudgetVO = new HeadBudgetVO();
+		
+		headBudgetVO.setBillNo(billNo);
+		headBudgetVO.setHeadNo(1);
+//		headBudgetVO.setHeadBudget(billVO.getStoreOrderVO().getStoreOrderSum());
+		headBudgetVO.setHeadBudgetDate(billVO.getBillDate());
+		headBudgetVO.setHeadBudgetContent(billVO.getBillTitle() + "입금");
+		headBudgetVO.setHeadBudgetTy(1);
+		headBudgetVO.setHeadBudgetCode(2);
+		
+		int bonsaResult = budgetMapper.insertOrderBudget(headBudgetVO);
+		log.info("updateBill -> bonsaResult : " + bonsaResult);
+		
+		// 4. 가맹점 예산 insert
+		StoreVO storeBudgetVO = new StoreVO();
+		
+		storeBudgetVO.setStoreNo(billVO.getStoreOrderVO().getStoreNo());
+		storeBudgetVO.setBillNo(billNo);
+		storeBudgetVO.setStoreBudgetDate(billVO.getBillDate());
+		storeBudgetVO.setStoreBudgetContent(billVO.getBillTitle() + "출금");
+		storeBudgetVO.setStoreBudgetTy(2);
+		log.info("updateBill -> storeNo : " + billVO.getStoreOrderVO().getStoreNo());
+		
+		int storeResult = budgetMapper.insertStoreBudget(storeBudgetVO);
+		log.info("updateBill -> storeResult : " + storeResult);
+		
+		
+		
+		// 5. 재고수불 insert
+		int storeOrderNo = orderMapper.findStoreOrderNo(billNo);
+		log.info("updateBill -> storeOrderNo : " + storeOrderNo);
+		
+		Map<String , Object> param = new HashMap<>();
+		param.put("storeOrderNo", storeOrderNo);
+		
+		List<StoreOrderDetailVO> detailList = orderMapper.orderDetailList(param);
+		
+		for (StoreOrderDetailVO storeOrderDetailVO : detailList) {
+			
+			InventoryVO inventoryVO = new InventoryVO();
+			
+			inventoryVO.setItemNo(storeOrderDetailVO.getItemNo());
+			inventoryVO.setRecordTy(2);  // 2 = 출고
+			inventoryVO.setRecordAmount(storeOrderDetailVO.getStoreOrderAmount());
+			inventoryVO.setRecordItemPrice(storeOrderDetailVO.getStoreOrderPrice());
+			inventoryVO.setStoreOrderNo(storeOrderNo);
+			
+			String billdate = billVO.getBillDate();
+			if(billdate != null && !billdate.isEmpty()) {
+				SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+				Date parseDate;
+				try {
+					
+					parseDate = sdf.parse(billdate);
+					inventoryVO.setRecordRegDate(parseDate);
+					log.info("updateBill -> parseDate : " + parseDate);
+					
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
+				
+			}
+
+	        int inventoryResult = inventoryMapper.insertInventory(inventoryVO);
+	        log.info("updateBill -> inventoryResult : " + inventoryResult);
+	        
+	        //*******
+	        //INVNTRY_RECORD 테이블에서 특정 ITEM_NO 컬럼의 값에 대한 조건과 RECORD_TY = 1인
+	        //	데이터의 RECORD_AMOUNT 값을 REMAIN_AMOUNT 값으로 초기화 한 후 아래의 프로시저를 실행함
+	        /* 
+	        --******* 1) URL /bonsa/bill#order 에서 미승인에 대한 계산서 발행을 위함 
+	        UPDATE BILL SET BILL_STATUS = 2 WHERE  BILL_NO = 138;
+
+			UPDATE STORE_ORDER SET STORE_ORDER_STATUS = 2 WHERE BILL_NO = 138;
+	        
+			UPDATE STORE_ORDER
+			SET BILL_NO = NULL
+			WHERE STORE_ORDER_NO = 379;
+			
+			--******** 2)
+			UPDATE INVNTRY_RECORD B 
+			SET    B.REMAIN_AMOUNT = (
+			    SELECT A.RECORD_AMOUNT
+			    FROM  INVNTRY_RECORD A
+			    WHERE A.ITEM_NO = 1
+			    AND   A.RECORD_TY = 1
+			    AND   A.INVNTRY_RECORD_NO = B.INVNTRY_RECORD_NO
+			)
+			WHERE B.ITEM_NO = 1
+			AND   B.RECORD_TY = 1;
+			
+			--******* 3) 
+			SELECT *
+			FROM  INVNTRY_RECORD A
+			WHERE A.ITEM_NO = 1
+			AND   A.RECORD_TY = 1;
+			
+			--INVNTRY_RECORD
+			--******* 5)
+			exec PROC_AUTO_EXP_DATE(1);
+	         */
+	        int initProcResult = this.inventoryMapper.preExcProcAutoExpDate(inventoryVO);
+	        log.info("updateBill -> initProcResult : " + initProcResult);
+	        
+	        // 출고 insert 시 유통기한 자동으로 입력되는 프로시저(PROC_AUTO_EXP_DATE(P_ITEM_NO IN NUMBER)) 실행
+	        /*
+	         inventoryVO : InventoryVO(expDate=null, invntryRecordNo=517, itemNo=1
+	         , recordTy=2, recordAmount=0, recordRegDate=Tue Feb 04 00:00:00 KST 2025
+	         , recordItemPrice=0, storeOrderNo=379, headOrderNo=0, remainAmount=0, rnum=0
+	         , safetyAmount=0, itemNm=null, itemAmount=0, salePrice=0, userNo=null
+	         , userNm=null, storeNm=null)
+	         */
+	        log.info("updateBill(209번째줄) -> inventoryVO : " + inventoryVO);
+		    int procResult = inventoryMapper.excProcAutoExpDate(inventoryVO);
+		    log.info("updateBill -> procResult : " + procResult);//-1
+	   
+	        }
+		
+		// 6. 알림 발송
+		if(result > 0){
+	        try {
+	        	
+	        	int storeNo = billVO.getStoreOrderVO().getStoreNo();
+	        	log.info("updateBill -> storeNo : " + storeNo);
+
+	        	// 알림 내용 설정
+	        	List<StoreEmpVO> recipients = determineRecipients(storeNo); // 수신자 결정 메서드
+	            if(recipients == null || recipients.isEmpty()) {
+	                log.error("수신자 에러");
+	                return result;
+	            }
+	            String content = "계산서 번호 " + billVO.getBillNo() + " 번 발행 완료";
+	            int alertType = 5; // 계산서 발행 완료
+	            String alertPk = String.valueOf(billVO.getBillNo());
+	            String alertUrl = "gmj/order#bill"; 
+	            
+	            for(StoreEmpVO recipient : recipients) {
+	                String recipientUserNo = recipient.getUserNo();
+	                
+	                log.info("updateBill -> recipientUserNo : " + recipientUserNo);
+	                
+	                alertService.alert(recipientUserNo, content, alertType, alertPk, alertUrl);
+	            }
+	        } catch (Exception e) {
+	            log.error("알림 전송 실패: ", e);
+	        }
+	    }
+		
+		return result;
+	}
+	
+	// 가맹점주 찾기
+	private List<StoreEmpVO> determineRecipients(int storeNo) {
+		return alertMapper.findGMJ(storeNo);
+	}
+	
+	// 가맹점 계산서 발행 리스트
+	@Override
+	public List<BillVO> gmjBList(Map<String, Object> map) {
+		return this.billMapper.gmjBList(map);
+	}
+
+	// 가맹점 계산 전체 행 개수
+	@Override
+	public int getgmjBTotal(Map<String, Object> map) {
+		return this.billMapper.getgmjBTotal(map);
+	}
+
+	// 가맹점 계산서 detail
+	@Override
+	public BillVO gmjBillDetail(Map<String, Object> map) {
+		return this.billMapper.gmjBillDetail(map);
+	}
+
+	// 가맹점 계산 전체 행 개수
+	@Override
+	public int getGmjSTotal(Map<String, Object> map) {
+		return this.billMapper.getGmjSTotal(map);
+	}
+
+	
+
+	
+
+}

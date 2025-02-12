@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.chatting.jc.mapper.ChattingMapper">
+	
+	
+	<select id="listPeople">
+		select * 
+		from employee e join tb_user u
+		on e.user_no=u.user_no
+		left outer join file_group f
+		on f.file_group_no = u.user_profile
+		left outer join file_detail fd
+		on f.file_group_no=fd.file_group_no
+	</select>
+	
+	<select id="filter">
+		
+		select * 
+		from employee e join tb_user u
+		on e.user_no=u.user_no
+		join position p
+		on e.position_no= p.position_no
+		join dept d
+		on e.dept_no=d.dept_no
+		left outer join file_group f
+		on f.file_group_no = u.user_profile
+		left outer join file_detail fd
+		on f.file_group_no=fd.file_group_no
+		where 1=1
+		and e.user_no!= #{userNo}
+		<if test="keyword != null and keyword != ''">
+			and user_nm like '%' || #{keyword} || '%'
+		</if>
+	</select>
+	
+	
+	<!-- 
+	ChatVO(chatRoomNo=3, userNo=null, chatSendNo=0, chatSendContent=aa, fileGroupNo=0, 
+    	chatSendDate=null, chatSendDel=0, receiverNo=a999, senderNo=a001, chatRoomNm=null, 
+    	chatRoomStatus=0, chatRoomCreate=null, chatRoomDel=0, chatNo=0, rcptnDate=null, 
+    	rcptnDel=0, rcptnChk=0, uploadFiles=null, fileGroupNm=null, fileRegdate=null, 
+    	fileGroupTy=0, fileNo=0, fileOriginalName=null, fileSaveName=null, fileSaveLocate=null, 
+    	fileSize=0, fileExt=null, fileMime=null, fileFancysize=null, fileSaveDate=null, 
+    	fileDowncount=0)
+	 -->
+	<insert id="createPost" parameterType="hashMap">
+		<selectKey resultType="int" order="BEFORE" keyProperty="chatSendNo">
+			SELECT NVL(MAX(CHAT_SEND_NO),0)+1 FROM CHAT_SEND
+		</selectKey>
+	
+		INSERT INTO CHAT_SEND(CHAT_SEND_NO, CHAT_ROOM_NO, SENDER_NO, CHAT_SEND_CONTENT
+		<if test="fileGroupNo != null and fileGroupNo != ''">
+		,FILE_GROUP_NO
+		</if>
+		 , CHAT_SEND_DATE, CHAT_SEND_DEL, RECEIVER_NO)
+		VALUES(#{chatSendNo},#{chatRoomNo},#{senderNo},#{chatSendContent}
+		<if test="fileGroupNo != null and fileGroupNo != ''">
+		,#{fileGroupNo}
+		</if>
+		,sysdate,1,#{receiverNo})
+
+	</insert>
+	
+	<select id="selectFileDetail" resultType="kr.or.ddit.vo.FileDetailVO">
+		select * from file_detail fd, file_group fg
+		where fg.file_group_no=fd.file_group_no
+		and fd.file_group_no=#{fileGroupNo}
+	</select>
+	
+	<!-- 
+	// /chattingRoom에서 이름을 클릭 시 채팅창에 관련된 채팅내역 출력
+	List<ChatVO> chatSendList(Map<String, Object> map)
+	 -->
+	<select id="chatSendList" parameterType="hashMap" resultType="kr.or.ddit.vo.ChatVO">
+		SELECT CHAT_SEND_NO, CHAT_ROOM_NO, SENDER_NO, 
+		    CHAT_SEND_CONTENT, c.FILE_GROUP_NO, CHAT_SEND_DATE, 
+		    CHAT_SEND_DEL, RECEIVER_NO, user_nm, fd.file_save_locate,fd.file_original_name
+		FROM   CHAT_SEND c
+		left  outer join tb_user u
+		on c.SENDER_NO=u.user_no
+	       left outer join file_group f
+	       on f.file_group_no=c.file_group_no
+	       left outer join file_detail fd
+	       on fd.file_group_no= f.file_group_no
+		WHERE  (SENDER_NO = #{senderNo} OR RECEIVER_NO = #{senderNo})
+		AND    (SENDER_NO = #{receiverNo} OR RECEIVER_NO = #{receiverNo})
+		ORDER BY CHAT_SEND_NO ASC 
+	</select>
+	
+</mapper>

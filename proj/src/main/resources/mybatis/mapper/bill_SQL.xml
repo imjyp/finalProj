@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.bill.jy.mapper.BillMapper">
+	
+	
+	<sql id="where">
+		<if test="keyword!=null and keyword!=''">
+			AND (
+	            TO_CHAR(BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+	            BILL_TITLE LIKE '%' || #{keyword} || '%' OR
+	            TO_CHAR(BILL_DATE, 'YYYY-MM-DD') LIKE '%' || #{keyword} || '%' OR
+	            (BILL_STATUS = '1' AND '계산완료' LIKE '%' || #{keyword} || '%') OR
+	            (BILL_STATUS = '2' AND '반려' LIKE '%' || #{keyword} || '%')
+	        )
+	    </if>
+	</sql>
+	
+	
+	<!-- 본사 계산 목록 -->
+	<select id="list" parameterType="hashMap" resultMap="billMap">
+		SELECT T.RNUM, T.BILL_NO, T.BILL_TITLE, T.FILE_GROUP_NO, T.BILL_STATUS, T.BILL_DATE
+		        , T.STORE_ORDER_NO, T.STORE_NO, T.STORE_ORDER_DATE, T.STORE_ORDER_STATUS, T.STORE_ORDER_SUM
+		        , T.STORE_ORDER_TITLE
+		        , T.STORE_LAT, T.STORE_LOT, T.STORE_ADDR1, T.STORE_ZIP, T.STORE_NM
+		        , T.STORE_ADDR2, T.STORE_OPEN_DATE, T.STORE_STATUS
+		        , T.FILE_GROUP_NM, T.FILE_REGDATE, T.FILE_GROUP_TY, T.FILE_NO, T.FILE_ORIGINAL_NAME
+		        , T.FILE_SAVE_NAME, T.FILE_EXT, T.FILE_SIZE, T.FILE_SAVE_LOCATE, T.FILE_MIME
+		        , T.FILE_FANCYSIZE, T.FILE_SAVE_DATE, T.FILE_DOWNCOUNT 
+		FROM (
+		    SELECT 
+		        ROW_NUMBER() OVER (ORDER BY B.BILL_NO DESC) AS RNUM
+		        , B.BILL_NO, B.BILL_TITLE, B.FILE_GROUP_NO, B.BILL_STATUS, B.BILL_DATE
+		        , SO.STORE_ORDER_NO, SO.STORE_NO, SO.STORE_ORDER_DATE, SO.STORE_ORDER_STATUS, SO.STORE_ORDER_SUM
+		        , SO.STORE_ORDER_TITLE
+		        , S.STORE_LAT, S.STORE_LOT, S.STORE_ADDR1, S.STORE_ZIP, S.STORE_NM
+		        , S.STORE_ADDR2, S.STORE_OPEN_DATE, S.STORE_STATUS
+		        , FG.FILE_GROUP_NM, FG.FILE_REGDATE, FG.FILE_GROUP_TY
+		        , FD.FILE_NO, FD.FILE_ORIGINAL_NAME, FD.FILE_SAVE_NAME, FD.FILE_EXT
+		        , FD.FILE_SIZE, FD.FILE_SAVE_LOCATE, FD.FILE_MIME, FD.FILE_FANCYSIZE 
+		        , FD.FILE_SAVE_DATE, FD.FILE_DOWNCOUNT
+		    FROM BILL B
+		    LEFT JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		    LEFT JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+		    LEFT JOIN FILE_GROUP FG ON B.FILE_GROUP_NO = FG.FILE_GROUP_NO
+		    LEFT JOIN FILE_DETAIL FD ON FG.FILE_GROUP_NO = FD.FILE_GROUP_NO
+		    WHERE 1 = 1
+		    <if test="keyword!=null and keyword!=''">
+				AND (
+		            TO_CHAR(B.BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+		            B.BILL_TITLE LIKE '%' || #{keyword} || '%' OR
+		            TO_CHAR(B.BILL_DATE, 'YYYY-MM-DD') LIKE '%' || #{keyword} || '%' OR
+		            (B.BILL_STATUS = '1' AND '계산완료' LIKE '%' || #{keyword} || '%') OR
+		            (B.BILL_STATUS = '2' AND '반려' LIKE '%' || #{keyword} || '%')
+		        )
+		    </if>
+		 ) T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+	</select>
+	
+	
+	<!-- 본사 계산 전체 행 개수  -->
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM BILL
+		WHERE 1 = 1
+		<include refid="where"></include>
+	</select>
+	
+	
+	<!--본사 계산서 상세 -->
+	<select id="billDetail" parameterType="hashMap" resultMap="billMap">
+		SELECT B.BILL_NO, B.BILL_TITLE, B.BILL_DATE, B.BILL_STATUS
+		    , SO.STORE_ORDER_NO, SO.STORE_NO, S.STORE_NM
+		FROM BILL B
+		LEFT JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		LEFT JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+		WHERE B.BILL_NO = #{billNo}
+	</select>
+	
+	
+	<!-- 계산 insert(billNo, billStatus)  -->
+	<insert id="insertBill" parameterType="kr.or.ddit.vo.BillVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="billNo">
+			SELECT NVL(MAX(BILL_NO),0)+1
+			FROM BILL
+		</selectKey>
+            INSERT INTO BILL (BILL_NO, BILL_STATUS) 
+			VALUES (#{billNo}, 2)
+	</insert>
+	
+	
+	<!-- 본사 발주 반려 -->
+	<update id="updOS" parameterType="java.util.List">
+		UPDATE STORE_ORDER
+		SET STORE_ORDER_STATUS = 4
+		WHERE STORE_ORDER_NO IN
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+			#{item.storeOrderNo}
+		</foreach>
+		AND STORE_NO IN
+		<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+		    #{item.storeNo}
+		</foreach>
+	</update>
+	
+	
+	<!-- 본사 계산 update -->
+	<update id="updateBill" parameterType="kr.or.ddit.vo.BillVO">
+		UPDATE BILL
+		SET BILL_TITLE = #{billTitle}
+		    , BILL_DATE = #{billDate} 
+		    , BILL_STATUS = 1
+	        <if test="fileGroupNo != null and fileGroupNo != ''">
+		    ,FILE_GROUP_NO =  #{fileGroupNo}
+	    	</if>
+		WHERE BILL_NO = #{billNo}
+	</update>
+	
+	
+	<!-- 가맹점 계산서 발행 리스트 -->
+	<select id="gmjBList" parameterType="hashMap" resultMap="billMap">
+		SELECT T.RNUM, T.BILL_NO, T.BILL_TITLE, T.FILE_GROUP_NO, T.BILL_STATUS, T.BILL_DATE
+		        , T.STORE_ORDER_NO, T.STORE_NO, T.STORE_ORDER_DATE, T.STORE_ORDER_STATUS, T.STORE_ORDER_SUM
+		        , T.STORE_ORDER_TITLE
+		        , T.STORE_LAT, T.STORE_LOT, T.STORE_ADDR1, T.STORE_ZIP, T.STORE_NM
+		        , T.STORE_ADDR2, T.STORE_OPEN_DATE, T.STORE_STATUS
+		        , T.FILE_GROUP_NM, T.FILE_REGDATE, T.FILE_GROUP_TY, T.FILE_NO, T.FILE_ORIGINAL_NAME
+		        , T.FILE_SAVE_NAME, T.FILE_EXT, T.FILE_SIZE, T.FILE_SAVE_LOCATE, T.FILE_MIME
+		        , T.FILE_FANCYSIZE, T.FILE_SAVE_DATE, T.FILE_DOWNCOUNT 
+		FROM (
+		    SELECT 
+		        ROW_NUMBER() OVER (ORDER BY B.BILL_NO DESC) AS RNUM
+		        , B.BILL_NO, B.BILL_TITLE, B.FILE_GROUP_NO, B.BILL_STATUS, B.BILL_DATE
+		        , SO.STORE_ORDER_NO, SO.STORE_NO, SO.STORE_ORDER_DATE, SO.STORE_ORDER_STATUS, SO.STORE_ORDER_SUM
+		        , SO.STORE_ORDER_TITLE
+		        , S.STORE_LAT, S.STORE_LOT, S.STORE_ADDR1, S.STORE_ZIP, S.STORE_NM
+		        , S.STORE_ADDR2, S.STORE_OPEN_DATE, S.STORE_STATUS
+		        , FG.FILE_GROUP_NM, FG.FILE_REGDATE, FG.FILE_GROUP_TY
+		        , FD.FILE_NO, FD.FILE_ORIGINAL_NAME, FD.FILE_SAVE_NAME, FD.FILE_EXT
+		        , FD.FILE_SIZE, FD.FILE_SAVE_LOCATE, FD.FILE_MIME, FD.FILE_FANCYSIZE 
+		        , FD.FILE_SAVE_DATE, FD.FILE_DOWNCOUNT
+		    FROM BILL B
+		    LEFT JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		    LEFT JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+		    LEFT JOIN FILE_GROUP FG ON B.FILE_GROUP_NO = FG.FILE_GROUP_NO
+		    LEFT JOIN FILE_DETAIL FD ON FG.FILE_GROUP_NO = FD.FILE_GROUP_NO
+		    WHERE 1 = 1
+		    AND SO.STORE_NO = #{storeNo}
+			<if test="keyword!=null and keyword!=''">
+				AND (
+		            TO_CHAR(B.BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+		            B.BILL_TITLE LIKE '%' || #{keyword} || '%' OR
+		            TO_CHAR(B.BILL_DATE, 'YYYY-MM-DD') LIKE '%' || #{keyword} || '%' OR
+		            (B.BILL_STATUS = '1' AND '계산완료' LIKE '%' || #{keyword} || '%') OR
+		            (B.BILL_STATUS = '2' AND '반려' LIKE '%' || #{keyword} || '%')
+		        )
+		    </if>
+		 ) T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+	</select>
+	 
+	 
+	 <!-- 가맹점 계산 전체 행 개수 -->
+	 <select id="getgmjBTotal" parameterType="hashMap" resultType="int">
+	 	SELECT COUNT(*)
+		FROM BILL B
+		JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		WHERE 1 = 1	
+		AND SO.STORE_NO = #{storeNo}
+		<if test="keyword!=null and keyword!=''">
+			AND (
+	            TO_CHAR(B.BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+	            B.BILL_TITLE LIKE '%' || #{keyword} || '%' OR
+	            TO_CHAR(B.BILL_DATE, 'YYYY-MM-DD') LIKE '%' || #{keyword} || '%' OR
+	            (B.BILL_STATUS = '1' AND '계산완료' LIKE '%' || #{keyword} || '%') OR
+	            (B.BILL_STATUS = '2' AND '반려' LIKE '%' || #{keyword} || '%')
+	        )
+	    </if>
+	 </select>
+	 
+	 
+	 <!-- 가맹점 계산서 detail -->
+	 <select id="gmjBillDetail" parameterType="hashMap" resultMap="billMap">
+	 	SELECT B.BILL_NO, B.BILL_TITLE, B.BILL_DATE, B.BILL_STATUS
+		    , SO.STORE_ORDER_NO, SO.STORE_NO, S.STORE_NM
+		FROM BILL B
+		LEFT JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		LEFT JOIN STORE S ON SO.STORE_NO = S.STORE_NO
+		WHERE B.BILL_NO = #{billNo}
+        AND SO.STORE_NO = #{storeNo}
+	 </select>
+	 
+	 
+	 <!-- 가맹점 발주/주문 현황 전체 행 개수 -->
+	<select id="getGmjSTotal" parameterType="int">
+		SELECT COUNT(*)
+		FROM (
+		    SELECT 
+		        B.BILL_NO AS NO, 
+		        B.BILL_TITLE AS TITLE, 
+		        B.BILL_STATUS AS BILL_STATUS, 
+		        B.BILL_DATE AS STATUS_DATE,
+		        SO.STORE_NO AS STORE_NO
+		    FROM BILL B
+		    JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		    WHERE 1 = 1	
+		    AND SO.STORE_NO =  #{storeNo}
+		    <if test="keyword!=null and keyword!=''">
+				AND (
+		            TO_CHAR(B.BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+		            B.BILL_TITLE LIKE '%' || #{keyword} || '%' OR
+		            TO_CHAR(B.BILL_DATE, 'YYYY-MM-DD') LIKE '%' || #{keyword} || '%' OR
+		            (B.BILL_STATUS = '1' AND '계산완료' LIKE '%' || #{keyword} || '%') OR
+		            (B.BILL_STATUS = '2' AND '반려' LIKE '%' || #{keyword} || '%')
+		        )
+		    </if>
+		    
+		    UNION ALL
+		    
+		    SELECT 
+		        STORE_ORDER_NO AS NO, 
+		        STORE_ORDER_TITLE AS TITLE, 
+		        STORE_ORDER_STATUS AS ORDER_STATUS, 
+		        STORE_ORDER_DATE AS STATUS_DATE,
+		        STORE_NO AS STORE_NO
+		    FROM STORE_ORDER
+		    WHERE 1 = 1
+		    AND STORE_NO = #{storeNo}
+		    <if test="keyword!=null and keyword!=''">
+			    AND (
+	                STORE_ORDER_TITLE LIKE '%' || #{keyword} || '%' OR
+	                TO_CHAR(STORE_ORDER_DATE, 'YYYY-MM-DD') LIKE '%' || #{keyword} || '%' OR
+	                (STORE_ORDER_STATUS = '1' AND '계산완료' LIKE '%' || #{keyword} || '%') OR
+	                (STORE_ORDER_STATUS = '2' AND '미승인' LIKE '%' || #{keyword} || '%') OR
+	                (STORE_ORDER_STATUS = '3' AND '회수' LIKE '%' || #{keyword} || '%') OR
+	                (STORE_ORDER_STATUS = '4' AND '반려' LIKE '%' || #{keyword} || '%')
+	            )
+		    </if>
+		) T
+		WHERE 1 = 1
+	</select>
+
+	 <resultMap type="kr.or.ddit.vo.BillVO" id="billMap">
+		<result property="billStatus" column="BILL_STATUS"/>
+		<result property="billDate" column="BILL_DATE"/>
+		<result property="billNo" column="BILL_NO"/>
+		<result property="billTitle" column="BILL_TITLE"/>
+		<result property="storeNo" column="STORE_NO"/>
+		<result property="storeNm" column="STORE_NM"/>
+		
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="rnum" column="RNUM"/>
+		
+		<association property="storeOrderVO" resultMap="storeOrderMap"></association>
+		<collection property="fileGroupVO" resultMap="fileGroupMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.StoreOrderVO" id="storeOrderMap">
+	    <result property="storeOrderNo" column="STORE_ORDER_NO"/>
+	    <result property="storeNo" column="STORE_NO"/>
+	    <result property="storeOrderDate" column="STORE_ORDER_DATE"/>
+	    <result property="fileGroupNo" column="FILE_GROUP_NO"/>
+	    <result property="storeOrderStatus" column="STORE_ORDER_STATUS"/>
+	    <result property="storeOrderSum" column="STORE_ORDER_SUM"/>
+	    <result property="storeOrderTitle" column="STORE_ORDER_TITLE"/>
+	    <result property="storeNm" column="STORE_NM"/>
+	    <result property="rnum" column="RNUM"/>
+	    
+	    <collection property="storeVO" resultMap="storeMap"></collection>
+	    <collection property="fileGroupVO" resultMap="fileGroupMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.StoreVO" id="storeMap">
+		<result property="storeNo" column="STORE_NO"/>
+		<result property="storeLat" column="STORE_LAT"/>
+		<result property="storeLot" column="STORE_LOT"/>
+		<result property="storeAddr1" column="STORE_ADDR1"/>
+		<result property="storeZip" column="STORE_ZIP"/>
+		<result property="storeNm" column="STORE_NM"/>
+		<result property="storeAddr2" column="STORE_ADDR2"/>
+		<result property="storeOpenDate" column="STORE_OPEN_DATE"/>
+		<result property="storeStatus" column="STORE_STATUS"/>
+	</resultMap>
+	
+	
+	
+	<resultMap type="kr.or.ddit.vo.FileGroupVO" id="fileGroupMap">
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileGroupNm" column="FILE_GROUP_NM"/>
+		<result property="fileRegdate" column="FILE_REGDATE"/>
+		<result property="fileGroupTy" column="FILE_GROUP_TY"/>	
+		
+		<collection property="fileDetailVOList" resultMap="fileDetailMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileDetailVO" id="fileDetailMap">
+		<result property="fileNo" column="FILE_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileOriginalName" column="FILE_ORIGINAL_NAME"/>
+		<result property="fileSaveName" column="FILE_SAVE_NAME"/>
+		<result property="fileExt" column="FILE_EXT"/>
+		<result property="fileSize" column="FILE_SIZE"/>
+		<result property="fileSaveLocate" column="FILE_SAVE_LOCATE"/>
+		<result property="fileMime" column="FILE_MIME"/>
+		<result property="fileFancysize" column="FILE_FANCYSIZE"/>
+		<result property="fileSaveDate" column="FILE_SAVE_DATE"/>
+		<result property="fileDowncount" column="FILE_DOWNCOUNT"/>
+	</resultMap>
+	
+</mapper>

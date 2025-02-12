@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.estimate.jy.mapper.EstimateMapper">
+	
+	
+	<sql id="whereEstimate">
+		<if test="keyword!=null and keyword!=''">
+		AND (
+		    TO_CHAR(ESTIMATE_NO) LIKE '%' || #{keyword} || '%' OR 
+		    TO_CHAR(STORE_ORDER_NO) LIKE '%' || #{keyword} || '%' OR
+		    ESTIMATE_TITLE LIKE '%' || #{keyword} || '%' OR
+		    TO_CHAR(ESTIMATE_DATE,'YYYY-MM-DD') LIKE '%' || #{keyword} || '%'
+		    )
+	    </if>
+	</sql>
+	
+	<sql id="whereBill">
+		<if test="keyword!=null and keyword!=''">
+		AND (
+		    TO_CHAR(BILL_NO) LIKE '%' || #{keyword} || '%' OR 
+		    BILL_TITLE LIKE '%' || #{keyword} || '%' OR
+		    TO_CHAR(BILL_DATE,'YYYY-MM-DD') LIKE '%' || #{keyword} || '%'
+		    )
+	    </if>
+	</sql>
+	
+	<!-- 본사 견적 목록 -->
+	<select id="list" parameterType="hashMap" resultMap="estimateMap">
+		SELECT T.RNUM, T.ESTIMATE_NO, T.STORE_ORDER_NO, T.ESTIMATE_TITLE, T.FILE_GROUP_NO, T.ESTIMATE_DATE
+			, T.FILE_GROUP_NM, T.FILE_REGDATE, T.FILE_GROUP_TY, T.FILE_NO, T.FILE_ORIGINAL_NAME
+	        , T.FILE_SAVE_NAME, T.FILE_EXT, T.FILE_SIZE, T.FILE_SAVE_LOCATE, T.FILE_MIME
+	        , T.FILE_FANCYSIZE, T.FILE_SAVE_DATE, T.FILE_DOWNCOUNT 
+		FROM (
+		    SELECT 
+		        ROW_NUMBER() OVER (ORDER BY STORE_ORDER_NO) AS RNUM,
+		        E.ESTIMATE_NO, E.STORE_ORDER_NO, E.ESTIMATE_TITLE, E.FILE_GROUP_NO, E.ESTIMATE_DATE,
+		        FG.FILE_GROUP_NM, FG.FILE_REGDATE, FG.FILE_GROUP_TY,
+		        FD.FILE_NO, FD.FILE_ORIGINAL_NAME, FD.FILE_SAVE_NAME, FD.FILE_EXT, 
+		        FD.FILE_SIZE, FD.FILE_SAVE_LOCATE, FD.FILE_MIME, FD.FILE_FANCYSIZE, 
+		        FD.FILE_SAVE_DATE, FD.FILE_DOWNCOUNT
+		    FROM ESTIMATE E
+		    LEFT JOIN FILE_GROUP FG ON E.FILE_GROUP_NO = FG.FILE_GROUP_NO
+		    LEFT JOIN FILE_DETAIL FD ON FG.FILE_GROUP_NO = FD.FILE_GROUP_NO
+			WHERE 1 = 1
+			<include refid="whereEstimate"></include>
+		 ) T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+	</select>
+	
+		
+	<!-- 가맹점 견적 전체 행 개수  -->
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM ESTIMATE
+		WHERE 1 = 1
+		<include refid="whereEstimate"></include>
+	</select>
+	
+	<!-- 본사 견적 insert -->
+	<insert id="inertEstimate" parameterType="kr.or.ddit.vo.EstimateVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="estimateNo">
+			SELECT ESTIMATE_SEQ.NEXTVAL FROM DUAL
+		</selectKey>
+		
+            INSERT INTO ESTIMATE (ESTIMATE_NO, STORE_ORDER_NO, ESTIMATE_STATUS, ESTIMATE_DATE)
+            VALUES (#{estimateNo}, #{storeOrderNo}, 2, SYSDATE)
+	</insert>
+	
+	
+	<!-- 본사 견적 update  -->
+	<update id="updateEstimate" parameterType="kr.or.ddit.vo.EstimateVO">
+		UPDATE ESTIMATE
+		SET ESTIMATE_TITLE = #{estimateTitle}
+		    , ESTIMATE_DATE = #{estimateDate} 
+	        <if test="fileGroupNo != null and fileGroupNo != ''">
+		    ,FILE_GROUP_NO =  #{fileGroupNo}
+	    	</if>
+		WHERE ESTIMATE_NO = #{estimateNo}
+		AND STORE_ORDER_NO =  #{storeOrderNo}  
+	</update>
+	
+	<!-- 본사 견적 detail -->
+	<select id="detail" parameterType="hashMap" resultMap="estimateMap">
+		SELECT T.ESTIMATE_NO, T.STORE_ORDER_NO, T.ESTIMATE_TITLE, T.FILE_GROUP_NO, T.ESTIMATE_DATE, T.ESTIMATE_STATUS,
+		       T.FILE_GROUP_NM, T.FILE_REGDATE, T.FILE_GROUP_TY, T.FILE_NO, T.FILE_ORIGINAL_NAME,
+		       T.FILE_SAVE_NAME, T.FILE_EXT, T.FILE_SIZE, T.FILE_SAVE_LOCATE, T.FILE_MIME,
+		       T.FILE_FANCYSIZE, T.FILE_SAVE_DATE, T.FILE_DOWNCOUNT 
+		FROM (
+		    SELECT 
+		        E.ESTIMATE_NO, E.STORE_ORDER_NO, E.ESTIMATE_TITLE, E.FILE_GROUP_NO, E.ESTIMATE_DATE, E.ESTIMATE_STATUS,
+		        FG.FILE_GROUP_NM, FG.FILE_REGDATE, FG.FILE_GROUP_TY,
+		        FD.FILE_NO, FD.FILE_ORIGINAL_NAME, FD.FILE_SAVE_NAME, FD.FILE_EXT, 
+		        FD.FILE_SIZE, FD.FILE_SAVE_LOCATE, FD.FILE_MIME, FD.FILE_FANCYSIZE, 
+		        FD.FILE_SAVE_DATE, FD.FILE_DOWNCOUNT
+		    FROM ESTIMATE E
+		    LEFT JOIN FILE_GROUP FG ON E.FILE_GROUP_NO = FG.FILE_GROUP_NO
+		    LEFT JOIN FILE_DETAIL FD ON FG.FILE_GROUP_NO = FD.FILE_GROUP_NO
+		    WHERE 1 = 1
+		) T
+		WHERE T.ESTIMATE_NO = #{estimateNo}
+	</select>
+	
+	<resultMap type="kr.or.ddit.vo.EstimateVO" id="estimateMap">
+		<result property="estimateStatus" column="ESTIMATE_STATUS"/>
+		<result property="estimateDate" column="ESTIMATE_DATE"/>
+		<result property="estimateNo" column="ESTIMATE_NO"/>
+		<result property="storeOrderNo" column="STORE_ORDER_NO"/>
+		<result property="estimateTitle" column="ESTIMATE_TITLE"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="rnum" column="RNUM"/>
+		
+		<collection property="fileGroupVO" resultMap="fileGroupMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileGroupVO" id="fileGroupMap">
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileGroupNm" column="FILE_GROUP_NM"/>
+		<result property="fileRegdate" column="FILE_REGDATE"/>
+		<result property="fileGroupTy" column="FILE_GROUP_TY"/>	
+		
+		<collection property="fileDetailVOList" resultMap="fileDetailMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileDetailVO" id="fileDetailMap">
+		<result property="fileNo" column="FILE_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileOriginalName" column="FILE_ORIGINAL_NAME"/>
+		<result property="fileSaveName" column="FILE_SAVE_NAME"/>
+		<result property="fileExt" column="FILE_EXT"/>
+		<result property="fileSize" column="FILE_SIZE"/>
+		<result property="fileSaveLocate" column="FILE_SAVE_LOCATE"/>
+		<result property="fileMime" column="FILE_MIME"/>
+		<result property="fileFancysize" column="FILE_FANCYSIZE"/>
+		<result property="fileSaveDate" column="FILE_SAVE_DATE"/>
+		<result property="fileDowncount" column="FILE_DOWNCOUNT"/>
+	</resultMap>
+	
+	
+	<!-- 가맹점 계산 목록 
+	<select id="billList" parameterType="hashMap" resultType="kr.or.ddit.vo.BillVO">
+		SELECT BILL_NO, ESTIMATE_NO2, BILL_TITLE, FILE_GROUP_NO
+		FROM BILL
+		WHERE 1 = 1
+		<include refid="whereBill"></include>
+		AND BILL_NO BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} *10)
+		ORDER BY BILL_NO
+	</select>
+	-->
+	<!-- 가맹점 계산 전체 행 개수  
+	<select id="getBTotal" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+		FROM BILL
+		WHERE 1 = 1
+		<include refid="whereBill"></include>
+	</select>
+	-->
+	<!-- 가맹점 발주 목록 
+	<select id="">
+		SELECT STORE_ORDER_NO, STORE_NO, STORE_ORDER_DATE, FILE_GROUP_NO
+		FROM STORE_ORDER
+		WHERE STORE_NO = #{storeNo}
+	</select>
+	 -->
+</mapper>

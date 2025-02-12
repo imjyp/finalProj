@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.menuSG.mapper.MenuMapper">
+
+<!--  -->
+<sql id="searchCondition">
+    <where>
+         m.menu_del = 1  <!-- 0에서 1로 변경 (1이 게시 상태)  -->
+        <if test="keyword != null and keyword != ''">
+            AND UPPER(m.menu_nm) LIKE UPPER('%' || #{keyword} || '%')
+        </if>
+        <if test="category != null and category != ''">
+            AND m.ctgry_no = #{category}
+        </if>
+    </where>
+</sql>
+
+<select id="selectMenuList" resultType="menuVO">
+    SELECT B.* FROM (
+        SELECT ROWNUM rnum, A.* FROM (
+            SELECT 
+                m.menu_no as menuNo,
+                m.menu_nm as menuNm,
+                m.ctgry_no as ctgryNo,
+                c.ctgry_nm as ctgryNm,
+                m.menu_price as menuPrice,
+                m.menu_cn as menuCn,
+                m.menu_regist as menuRegist,
+                m.menu_del as menuDel,
+                (select file_save_locate 
+                 from file_detail fd
+                 where fd.file_group_no = m.file_group_no
+                 and rownum = 1) as previewPath
+            FROM TEAM3_202407F.MENU m
+            LEFT JOIN TEAM3_202407F.CTGRY c ON m.ctgry_no = c.ctgry_no
+            <include refid="searchCondition"/>
+            ORDER BY m.menu_no asc
+        ) A WHERE ROWNUM <![CDATA[<=]]> #{page} * 10
+    ) B WHERE B.rnum <![CDATA[>]]> (#{page} - 1) * 10
+</select>
+
+<select id="selectMenu" parameterType="int" resultMap="menuWithFileMap">
+    SELECT 
+        m.menu_no, m.menu_nm, m.ctgry_no, m.menu_price, 
+        m.menu_cn, m.menu_regist, m.menu_del, m.file_group_no,
+        fg.file_group_nm, fg.file_regdate, fg.file_group_ty,
+        fd.file_no, fd.file_original_name, fd.file_save_name,
+        fd.file_save_locate, fd.file_size, fd.file_ext,
+        fd.file_mime, fd.file_fancysize, fd.file_save_date,
+        fd.file_downcount,
+        fd.file_save_locate || '/' || fd.file_save_name as file_path
+    FROM TEAM3_202407F.MENU m
+    LEFT JOIN TEAM3_202407F.FILE_GROUP fg ON m.file_group_no = fg.file_group_no
+    LEFT JOIN TEAM3_202407F.FILE_DETAIL fd ON fg.file_group_no = fd.file_group_no
+    WHERE m.menu_no = #{menuNo}
+    AND m.menu_del = 1
+    ORDER BY fd.file_no
+</select>
+
+<insert id="insertMenu" parameterType="menuVO" >
+    INSERT INTO TEAM3_202407F.MENU (
+        menu_no,
+        menu_nm,
+        ctgry_no,
+        menu_price,
+        menu_cn,
+        menu_regist,
+        menu_del
+    ) VALUES (
+        (SELECT NVL(MAX(menu_no), 0) + 1 FROM TEAM3_202407F.MENU),
+        #{menuNm},
+        #{ctgryNo},
+        #{menuPrice},
+        #{menuCn},
+        SYSDATE,
+        1  <!-- 0에서 1로 변경 (게시 상태로 삽입) -->
+    )
+</insert>
+
+<update id="updateMenu" parameterType="menuVO">
+    UPDATE TEAM3_202407F.MENU
+    SET 
+        menu_nm = #{menuNm},
+        ctgry_no = #{ctgryNo},
+        menu_price = #{menuPrice},
+        menu_cn = #{menuCn}
+    WHERE menu_no = #{menuNo}
+    AND menu_del = 1
+</update>
+
+<update id="deleteMenu" parameterType="int">
+    UPDATE TEAM3_202407F.MENU
+    SET menu_del = 2  <!-- 2는 삭제 상태 -->
+    WHERE menu_no = #{menuNo}
+    AND menu_del = 1  <!-- 1은 게시 상태 -->
+</update>
+
+<update id="deleteMenuList" parameterType="java.util.List">
+    UPDATE TEAM3_202407F.MENU
+    SET menu_del = 2
+    WHERE menu_no IN
+    <foreach collection="list" item="menuNo" open="(" separator="," close=")">
+        #{menuNo}
+    </foreach>
+    AND menu_del = 1
+</update>
+
+<select id="getTotalCount" resultType="int">
+    SELECT COUNT(*)
+    FROM TEAM3_202407F.MENU m
+    LEFT JOIN TEAM3_202407F.CTGRY c ON m.ctgry_no = c.ctgry_no
+    <include refid="searchCondition"/>
+</select>
+
+<update id="updateMenuFileGroup" parameterType="map">
+    UPDATE TEAM3_202407F.MENU
+    SET file_group_no = #{fileGroupNo}
+    WHERE menu_no = #{menuNo}
+</update>
+
+<resultMap id="menuWithFileMap" type="menuVO">
+    <id property="menuNo" column="menu_no"/>
+    <result property="menuNm" column="menu_nm"/>
+    <result property="ctgryNo" column="ctgry_no"/>
+    <result property="menuPrice" column="menu_price"/>
+    <result property="menuCn" column="menu_cn"/>
+    <result property="menuRegist" column="menu_regist"/>
+    <result property="menuDel" column="menu_del"/>
+    <result property="fileGroupNo" column="file_group_no"/>
+    
+    <association property="fileGroupVO" javaType="fileGroupVO">
+        <id property="fileGroupNo" column="file_group_no"/>
+        <result property="fileGroupNm" column="file_group_nm"/>
+        <result property="fileRegdate" column="file_regdate"/>
+        <result property="fileGroupTy" column="file_group_ty"/>
+    </association>
+    
+    <collection property="fileDetailList" ofType="fileDetailVO">
+        <id property="fileNo" column="file_no"/>
+        <result property="fileGroupNo" column="file_group_no"/>
+        <result property="fileOriginalName" column="file_original_name"/>
+        <result property="fileSaveName" column="file_save_name"/>
+        <result property="fileSaveLocate" column="file_save_locate"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="fileExt" column="file_ext"/>
+        <result property="fileMime" column="file_mime"/>
+        <result property="fileFancysize" column="file_fancysize"/>
+        <result property="fileSaveDate" column="file_save_date"/>
+        <result property="fileDowncount" column="file_downcount"/>
+    </collection>
+</resultMap>
+
+<select id="selectMenuWithImage" parameterType="long" resultMap="menuWithFileMap">
+    SELECT 
+        m.menu_no, m.menu_nm, m.ctgry_no, m.menu_price, 
+        m.menu_cn, m.menu_regist, m.menu_del, m.file_group_no,
+        fg.file_group_nm, fg.file_regdate, fg.file_group_ty,
+        fd.file_no, fd.file_original_name, fd.file_save_name,
+        fd.file_save_locate,
+        fd.file_size, fd.file_ext,
+        fd.file_mime, fd.file_fancysize, fd.file_save_date,
+        fd.file_downcount
+    FROM TEAM3_202407F.MENU m
+    INNER JOIN TEAM3_202407F.FILE_GROUP fg ON m.file_group_no = fg.file_group_no
+    INNER JOIN TEAM3_202407F.FILE_DETAIL fd ON fg.file_group_no = fd.file_group_no
+    WHERE fd.file_no = #{fileNo}
+    AND m.menu_del = 1
+</select>
+
+</mapper>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.member.mapper.UsersMapper">
+	<!-- 로그인  
+	<select id="login">
+		SELECT U.USER_NO, U.USER_PW, U.ENABLED, U.USER_CODE, U.USER_NM
+		       , U.USER_MAIL, U.USER_PHONE, U.USER_BIRTH, U.USER_INDATE, U.USER_PROFILE
+		       , U.USER_SIGN, U.USER_SYS_YN, U.USER_CREATE, U.USER_ADDR1, U.USER_ADDR2, U.USER_ZIP
+		       ,1
+		AND U.USER_NO = #{userNo} 
+		AND U.USER_NO = A.USER_NO					
+	</select>
+	-->
+	<!-- 
+	//기본 로그인을 위한 유저(TB_MEMBERS) 및 권한(TB_AUTHS) 테이블이 이미 있는제 체크
+	public int beforeChk();
+	 -->
+	<select id="beforeChk" resultType="int">
+		SELECT COUNT(*)
+		FROM   TB_USER U, AUTH A
+		WHERE  U.USER_NO = A.USER_NO
+		AND    U.USER_NO = #{userNo}
+	</select>
+	
+	<!-- 
+	email로 사용자 정보를 가져옴
+	public UsersVO findByEmail(String email)
+	 
+	<select id="findByEmail" parameterType="String" resultType="kr.or.ddit.vo.UsersVO">
+		SELECT ID, EMAIL, PASSWORD, CREATED_AT, UPDATED_AT
+		FROM   USERS
+		WHERE  EMAIL = #{email}
+	</select>
+	-->
+	<!-- 
+	MemberVO(memId=u001, memName=성원태2, memPw=java, memEnable=false
+	, memRegdate=null,fileGroupNo=0, uploadFiles=파일객체들
+		
+	public int save(MemberVO memberVO)
+	 -->
+	<insert id="save" parameterType="kr.or.ddit.vo.TBUserVO">
+		INSERT INTO TB_USER(USER_NO, USER_PW, ENABLED, USER_CODE, USER_NM
+			, USER_MAIL, USER_PHONE, USER_BIRTH, USER_INDATE, USER_PROFILE
+			, USER_SIGN, USER_SYS_YN, USER_CREATE, USER_ADDR1, USER_ADDR2, USER_ZIP
+			<if test="userProfile!=null and userProfile!=''">
+			, USER_PROFILE
+			</if>
+			)
+		VALUES(#{userNo}, #{userPw}, #{enabled}, #{userCode}, #{userNm}
+			, #{userMail}, #{userPhone}, #{userBirth}, #{userIndate}
+			, #{userSign}, #{userSysYn}, #{userCreate}, #{userAddr1}, #{userAddr2}, #{userZip}
+			<if test="userProfile!=null and userProfile!=''">
+			, #{userProfile}
+			</if>
+		)
+	</insert>
+	
+	<!--권한등록
+	public int saveAuths(MemberVO memberVO) 
+	
+	MemberVO(memId=u001, memName=성원태2, memPw=java, memEnable=false
+	, memRegdate=null,fileGroupNo=0, uploadFiles=파일객체들
+	 -->
+	<insert id="saveAuths" parameterType="kr.or.ddit.vo.TBUserVO">
+		INSERT INTO TB_AUTHS(AUTH_NO, USER_NO, AUTH_NAME, AUTH_DATE)
+		VALUES(#{authNo}, #{userNo},'ROLE_GY', SYSDATE)
+	</insert>
+</mapper>
+
+
+

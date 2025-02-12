@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.salary.jc.mapper.SalaryMapper">
+
+	<sql id="where2">
+		<if test="year != null and year != ''">
+			AND EXTRACT(YEAR FROM s.sal_pymnt_date) = #{year}
+		</if>
+		<if test="month != null and month != ''">
+           	AND EXTRACT(MONTH FROM s.sal_pymnt_date) = #{month}
+           </if>
+	</sql>
+	<sql id="where">
+		<if test="keyword != null and keyword != ''">
+			and user_nm '%' || #{keyword} || '%'
+		</if>
+	</sql>
+	
+	<select id="year" resultType="SalaryVO">
+		 select distinct(extract(year from sal_pymnt_date)) as year
+ 		from salary
+ 		 where sal_classify=1
+	</select>
+	
+	<select id="month" resultType="SalaryVO">
+		 select distinct(extract(month from sal_pymnt_date)) as month
+ 		from salary
+ 		 where sal_classify=1
+	</select>
+	
+	
+		<select id="year2" resultType="SalaryVO">
+		 select distinct(extract(year from sal_pymnt_date)) as year
+ 		from salary
+ 		 where sal_classify=2
+	</select>
+	
+	<select id="month2" resultType="SalaryVO">
+		 select distinct(extract(month from sal_pymnt_date)) as month
+ 		from salary
+ 		 where sal_classify=2
+	</select>
+	
+	<select id="getBsSalary" parameterType="hashMap" resultType="SalaryVO">
+		select t.*
+	    from(
+	        select ROW_NUMBER() OVER(order by sal_pymnt_date desc) RNUM,
+	        s.*, e.position_no, u.user_nm,(select file_save_locate 
+            from file_detail fd, file_group fg, tb_user us 
+            where fg.file_group_no =fd.file_group_no 
+            and fg.file_group_no =us.user_profile
+            and u.user_no=us.user_no) profile,
+	        case when e.position_no = 1 then '사원'
+	             when e.position_no = 2 then '과장'
+	             when e.position_no = 3 then '부장'
+	             when e.position_no = 4 then 'CEO'
+	        end as positionNm,
+	         case when e.dept_no = 1 then '인사/행정'
+	             when e.dept_no = 2 then '경영'
+	             when e.dept_no = 3 then '재정'
+	             when e.dept_no = 4 then '전략/기획'
+	             when e.dept_no = 5 then '물류'
+	        end as deptNm
+	        from salary s, tb_user u, employee e
+	        where s.user_no=u.user_no
+	        and u.user_no=e.user_no 
+	        <if test="keyword != null and keyword != ''">
+				and u.user_nm like '%' || #{keyword} || '%'
+			</if>
+			<if test="deptNo != null and deptNo != ''">
+				AND e.dept_no=#{deptNo}
+			</if>
+			<if test="positionNo != null and positionNo != ''">
+				AND e.position_no=#{positionNo}
+			</if>
+			<include refid="where2"></include>
+			
+	    )t
+	   WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10 - 1) AND
+		(#{currentPage} * 10)    
+	</select>
+
+	<select id="getGmjSalary" parameterType="hashMap" resultType="SalaryVO">
+		select t.*
+		from(
+			select ROW_NUMBER() OVER(order by sal_pymnt_date desc) RNUM,
+			s.*, e.store_no, e.position_no, u.user_nm,(select file_save_locate 
+            from file_detail fd, file_group fg, tb_user us 
+            where fg.file_group_no =fd.file_group_no 
+            and fg.file_group_no =us.user_profile
+            and u.user_no=us.user_no) profile,
+			case when e.position_no = 5 then '점주'
+	             when e.position_no = 6 then '알바'
+	             when e.position_no = 7 then '매니저'
+	        end as positionNm
+			from salary s, tb_user u, store_emp e
+			where s.user_no=u.user_no
+			and u.user_no=e.user_no
+			and e.store_no=#{storeNo}
+			<if test="keyword != null and keyword != ''">
+				and u.user_nm like '%' || #{keyword} || '%'
+			</if>
+			<include refid="where2"></include>
+		)t
+		WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10 - 1) AND
+		(#{currentPage} * 10)  
+		
+	</select>
+	
+	<select id="getTotal2" resultType="int" parameterType="hashMap">
+		select count(*)
+		from salary s, tb_user u, employee e
+		where s.user_no=u.user_no
+		and u.user_no=e.user_no
+		<if test="keyword != null and keyword != ''">
+			and u.user_nm like '%' || #{keyword} || '%'
+		</if>
+		<if test="deptNo != null and deptNo != ''">
+			AND e.dept_no=#{deptNo}
+		</if>
+		<if test="year != null and year != ''">
+			AND extract(year from s.sal_pymnt_date)=#{year}
+		</if>
+		<if test="month != null and month != ''">
+			AND extract(month from s.sal_pymnt_date)=#{month}
+		</if>
+	</select>
+	
+	
+	<select id="getTotal" resultType="int" parameterType="hashMap">
+		select count(*)
+		from salary s, tb_user u, store_emp e
+		where s.user_no=u.user_no
+		and u.user_no=e.user_no
+		and e.store_no=#{storeNo}
+		<if test="keyword != null and keyword != ''">
+			and u.user_nm like '%' || #{keyword} || '%'
+		</if>
+	</select>
+	
+	
+	<select id="deptList" resultType="DeptVO">
+		select dept_no, dept_nm from dept order by dept_no
+	</select>
+	
+	<select id="positionList" resultType="PositionVO">
+		 select * from position
+   		 where position_no between 1 and 4
+   		 order by position_no
+	</select>
+	
+	
+	
+	<insert id="insertSalary" parameterType="hashMap">
+		INSERT INTO salary (sal_no, user_no, sal_pymnt_date, sal_amount, sal_classify)
+		VALUES ((select nvl(max(sal_no), 0) + 1 from salary), #{userNo}, sysdate, #{salAmount}, 1)
+	</insert>
+	
+	
+	
+	<update id="editSalary" >
+		update salary
+		set duty=(case 
+		        when sal_amount >1000000000 then 45
+		        when sal_amount >500000000 then 42
+		        when sal_amount >300000000 then 40
+		        when sal_amount >150000000 then 38
+		        when sal_amount >88000000 then 35
+		        when sal_amount >50000000 then 24
+		        when sal_amount >14000000 then 15
+		        else 6
+		 end),
+		    after_tax=sal_amount * (1-(
+		(case 
+		        when sal_amount >1000000000 then 45
+		        when sal_amount >500000000 then 42
+		        when sal_amount >300000000 then 40
+		        when sal_amount >150000000 then 38
+		        when sal_amount >88000000 then 35
+		        when sal_amount >50000000 then 24
+		        when sal_amount >14000000 then 15
+		        else 6
+		 end) 
+		/100))
+		where after_tax  is null
+	</update>
+	
+	<select id="filterP" resultType="kr.or.ddit.vo.EmployeeVO" parameterType="hashMap" >
+		select e.*, u.user_nm, u.user_indate, u.user_phone,
+		(select file_save_locate 
+           from file_detail fd, file_group fg, tb_user us 
+           where fg.file_group_no =fd.file_group_no 
+           and fg.file_group_no =us.user_profile
+           and u.user_no=us.user_no) profile,
+           (select position_nm from position p, employee e, tb_user us 
+           where p.position_no=e.position_no
+           and e.user_no=us.user_no
+            and u.user_no=us.user_no) positionNm,
+            (select dept_nm from dept d, employee e, tb_user us 
+           where d.dept_no=e.dept_no
+           and e.user_no=us.user_no
+            and u.user_no=us.user_no) deptNm
+		from employee e, tb_user u 
+		where e.user_no = u.user_no
+		and e.position_no!=4
+		and e.position_no!=8
+		<if test="positionNo != null and positionNo != ''">
+		and position_no=#{positionNo} 
+		</if>
+		<if test="deptNo != null and deptNo != ''">
+		and dept_no=#{deptNo}
+		</if>
+	</select>
+	
+	<insert id="insertAll" >
+	insert into salary(sal_no, user_no, sal_pymnt_date, sal_amount, sal_classify)
+	select (select max(sal_no) from salary)+ ROWNUM ,user_no, SYSDATE,
+	    case 
+	        when position_no=1 then 3000000
+	        when position_no=2 then 4000000
+	        when position_no=3 then 5000000
+	    end sal_amount, 1
+	from employee
+	where position_no in (1,2,3)
+	
+	</insert>
+	
+	<select id="gmjemplist" resultType="kr.or.ddit.vo.SalaryVO" parameterType="int">
+		select u.user_no, s.store_no, p.position_nm, u.user_nm, fd.file_save_locate profile ,u.user_phone, s.store_nm
+		from tb_user u, store s, position p, store_emp se, file_group fg, file_detail fd
+		where u.user_no = se.user_no
+		and se.store_no=s.store_no
+		and se.position_no=p.position_no
+		and fg.file_group_no=fd.file_group_no
+		and fg.file_group_no=u.user_profile
+		and u.user_status=1
+		and p.position_no in(6,7)
+	</select>
+	
+	<insert id="insertAllGMJ" >
+	insert into salary(sal_no, user_no, sal_pymnt_date, sal_amount, sal_classify)
+	SELECT (select nvl(max(S.sal_no),0)+1 from salary S) + ROWNUM 
+	     , T.USER_NO
+	     , SYSDATE
+	     , T.salAmount
+	     , 2
+	FROM
+	(
+	    select u.user_no
+	         , se.position_no
+	         , SUM(nvl(to_number(substr(working_time,0,2)),0) * 10000) salAmount
+	    from tb_user u left outer join schedule s on(u.user_no = s.user_no)
+	                   left outer join store_emp se on(se.user_no = u.user_no)
+	                   left outer join store st on(st.store_no=se.store_no)
+	    where se.position_no in(6)
+	    and st.store_no=#{storeNo}
+	    and   to_char(s.schdul_date,'YYYY-MM')=to_char(sysdate,'YYYY-MM')
+	    GROUP BY U.USER_NO, SE.POSITION_NO
+	) T
+	
+	</insert>
+</mapper>

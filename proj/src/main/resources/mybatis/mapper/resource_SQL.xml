@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.resource.jw.mapper.ResourceMapper">
+	<sql id="where">
+		<if test="keyword!=null and keyword!=''">
+			AND (D.DEPT_NM LIKE '%' || #{keyword} || '%'
+		      OR T.BOARD_TITLE LIKE '%' || #{keyword} || '%'
+		      OR T.USER_NM LIKE '%' || #{keyword} || '%'
+		    )
+		</if>
+	</sql>
+
+	<!-- map: {currentPage=1, keyword=등록} -->
+	<select id="getList" parameterType="hashMap" resultMap="resourceMap2">
+		WITH U AS(
+		    SELECT DENSE_RANK() OVER(ORDER BY T.BOARD_NO DESC) RNUM
+		         , T.*, D.DEPT_NM
+		    FROM
+		    (
+		        SELECT A.BOARD_NO, A.BOARD_CODE_NO, A.BOARD_TITLE, A.BOARD_CN, A.BOARD_REG_DATE
+		             , A.BOARD_CNT, A.BOARD_STATUS, A.USER_NO
+		             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+		             , A.FILE_GROUP_NO, A.BOARD_START
+		             , A.BOARD_END, A.FILE_SAVE_LOCATE, A.FILE_ORIGINAL_NAME
+		        FROM (
+			        SELECT *
+			        FROM   BOARD X LEFT OUTER JOIN FILE_GROUP Y ON(X.FILE_GROUP_NO = Y.FILE_GROUP_NO)
+			                LEFT OUTER JOIN FILE_DETAIL Z ON(Y.FILE_GROUP_NO = Z.FILE_GROUP_NO)
+			    ) A
+		        WHERE A.BOARD_CODE_NO = 3    
+		    ) T, EMPLOYEE E, DEPT D
+		    WHERE T.USER_NO = E.USER_NO
+		    AND E.DEPT_NO = D.DEPT_NO
+		    AND BOARD_STATUS = 1
+		    <include refid="where"></include>
+		)
+		SELECT * FROM U
+		WHERE U.RNUM BETWEEN (#{currentPage} * 10) - (10-1) AND (#{currentPage} * 10)
+	</select>
+	
+	<!-- map: {currentPage=1, keyword=} -->
+	<select id="total" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*)
+	    FROM
+	    (
+	        SELECT A.BOARD_NO, A.BOARD_CODE_NO, A.BOARD_TITLE, A.BOARD_CN, A.BOARD_REG_DATE
+	             , A.BOARD_CNT, A.BOARD_STATUS, A.USER_NO
+	             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+	        FROM (
+		        SELECT *
+		        FROM   BOARD X
+		    ) A
+	        WHERE A.BOARD_CODE_NO = 3    
+	    ) T, EMPLOYEE E, DEPT D
+	    WHERE T.USER_NO = E.USER_NO
+	    AND E.DEPT_NO = D.DEPT_NO
+	    AND BOARD_STATUS = 1
+	    <include refid="where"></include>
+	</select>
+	
+	<select id="detail" parameterType="hashMap" resultMap="resourceMap2">
+		SELECT DENSE_RANK() OVER(ORDER BY T.BOARD_NO DESC) RNUM
+		         , T.*, D.DEPT_NM
+		    FROM
+		    (
+		        SELECT A.BOARD_NO, A.BOARD_CODE_NO, A.BOARD_TITLE, A.BOARD_CN, A.BOARD_REG_DATE
+		             , A.BOARD_CNT, A.BOARD_STATUS, A.USER_NO
+		             , (SELECT B.USER_NM FROM TB_USER B WHERE B.USER_NO = A.USER_NO) USER_NM
+		             , A.FILE_GROUP_NO, A.BOARD_START
+		             , A.BOARD_END, A.FILE_SAVE_LOCATE, A.FILE_ORIGINAL_NAME
+		        FROM (
+			        SELECT *
+			        FROM   BOARD X LEFT OUTER JOIN FILE_GROUP Y ON(X.FILE_GROUP_NO = Y.FILE_GROUP_NO)
+			                LEFT OUTER JOIN FILE_DETAIL Z ON(Y.FILE_GROUP_NO = Z.FILE_GROUP_NO)
+			    ) A
+		        WHERE A.BOARD_CODE_NO = 3    
+		    ) T, EMPLOYEE E, DEPT D
+		    WHERE T.USER_NO = E.USER_NO
+		    AND E.DEPT_NO = D.DEPT_NO
+		    AND BOARD_STATUS = 1
+		    and BOARD_NO = #{boardNo}
+	</select>
+	
+	<update id="update" parameterType="kr.or.ddit.resource.jw.vo.ResourceVO" >
+		UPDATE BOARD
+		SET BOARD_CN = #{boardCn}
+			<if test="fileGroupNo != null and fileGroupNo != ''">
+			,FILE_GROUP_NO = #{fileGroupNo}
+			</if>
+		WHERE BOARD_NO = #{boardNo}
+	</update>
+	
+	<!-- {"boardNo":48} 
+	resultType은 당연히 int
+	-->
+	<update id="delete" parameterType="hashMap">
+		UPDATE BOARD
+		SET BOARD_STATUS = 2
+		WHERE BOARD_NO = #{boardNo}	
+	</update>
+	
+	<insert id="createPost" parameterType="kr.or.ddit.resource.jw.vo.ResourceVO">
+		INSERT INTO BOARD(BOARD_NO,BOARD_CODE_NO, BOARD_TITLE, BOARD_CN, BOARD_REG_DATE, BOARD_STATUS, BOARD_START, BOARD_END, USER_NO
+		<if test="fileGroupNo != null and fileGroupNo != ''">
+		,FILE_GROUP_NO
+		</if>
+		 )
+		VALUES((SELECT NVL(MAX(BOARD_NO),0)+1 FROM BOARD),3,#{boardTitle},#{boardCn},SYSDATE,1,#{boardStart},#{boardEnd}, #{userNo}
+		<if test="fileGroupNo != null and fileGroupNo != ''">
+		,#{fileGroupNo}
+		</if>
+		)
+		<selectKey resultType="int" keyProperty="boardNo" order="AFTER">
+			SELECT MAX(BOARD_NO) FROM BOARD
+		</selectKey>
+	</insert>
+	
+	<resultMap type="kr.or.ddit.resource.jw.vo.ResourceVO" id="resourceMap2">
+		<result property="rnum" column="RNUM"/>
+		<result property="userNm" column="USER_NM"/>
+		<result property="deptNm" column="DEPT_NM"/>
+		<result property="boardNo" column="BOARD_NO"/>
+		<result property="boardCodeNo" column="BOARD_CODE_NO"/>
+		<result property="boardTitle" column="BOARD_TITLE"/>
+		<result property="boardCn" column="BOARD_CN"/>
+		<result property="boardRegDate" column="BOARD_REG_DATE"/>
+		<result property="boardCnt" column="BOARD_CNT"/>
+		<result property="boardStatus" column="BOARD_STATUS"/>
+		<result property="userNo" column="USER_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="boardStart" column="BOARD_START"/>
+		<result property="boardEnd" column="BOARD_END"/>
+		<association property="fileGroupVO" resultMap="fileGroupMap"></association>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileGroupVO" id="fileGroupMap">
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileGroupNm" column="FILE_GROUP_NM"/>
+		<result property="fileRegdate" column="FILE_REGDATE"/>
+		<result property="fileGroupTy" column="FILE_GROUP_TY"/>
+		<collection property="fileDetailVOList" resultMap="fileDetailMap"></collection>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.FileDetailVO" id="fileDetailMap">
+		<result property="fileNo" column="FILE_NO"/>
+		<result property="fileGroupNo" column="FILE_GROUP_NO"/>
+		<result property="fileOriginalName" column="FILE_ORIGINAL_NAME"/>
+		<result property="fileSaveName" column="FILE_SAVE_NAME"/>
+		<result property="fileExt" column="FILE_EXT"/>
+		<result property="fileSize" column="FILE_SIZE"/>
+		<result property="fileSaveLocate" column="FILE_SAVE_LOCATE"/>
+		<result property="fileMime" column="FILE_MIME"/>
+		<result property="fileFancysize" column="FILE_FANCYSIZE"/>
+		<result property="fileSaveDate" column="FILE_SAVE_DATE"/>
+		<result property="fileDowncount" column="FILE_DOWNCOUNT"/>
+	</resultMap>
+</mapper>

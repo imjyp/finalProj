@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.manageSG.mapper.HRMapper">
+
+
+
+<!-- 회원 정보 수정 -->
+<update id="hrUpdProfile" parameterType="hashMap">
+	update tb_user
+	set user_nm=#{userNm}
+		<if test="userAddr1!=null and userAddr1!=''">
+			,user_addr1=#{userAddr1}
+		</if>
+		<if test="userAddr2!=null and userAddr2!=''">
+			,user_addr2=#{userAddr2}
+		</if>
+		<if test="userZip!=null and userZip!=''">
+			,user_zip=#{userZip}
+		</if>
+		<if test="userBirth!=null and userBirth!=''">
+			,user_birth=#{userBirth}
+		</if>
+		<if test="userMail!=null and userMail!=''">
+			,user_mail=#{userMail}
+		</if>
+		<if test="userPhone!=null and userPhone!=''">
+			,user_phone=#{userPhone}
+		</if>
+		<if test="fileGroupNo!=null and fileGroupNo!=''">
+			,user_profile=#{fileGroupNo}
+		</if>
+		<if test="fileGroupNo2!=null and fileGroupNo2!=''">
+			,user_sign=#{fileGroupNo2}
+		</if>
+	where user_no=#{userNo}
+</update>
+
+<!-- 회원 탈퇴 -->
+<update id="hrDelUser">
+	update tb_user
+	set user_status = 2
+	where user_no = #{userNo}
+</update>
+
+<!-- 사용자 목록 조회 수정 -->
+<select id="selectUserList" parameterType="map" resultType="tbUserVO">
+    SELECT *
+    FROM (
+        SELECT 
+            a.*, 
+            ROW_NUMBER() OVER (ORDER BY a.USER_NO) AS rnum
+        FROM (
+            SELECT DISTINCT
+                u.USER_NO, u.USER_PW, u.ENABLED, u.USER_CODE,
+                u.USER_NM, u.USER_MAIL, u.USER_PHONE,
+                u.USER_BIRTH, u.USER_INDATE, u.USER_PROFILE,
+                u.USER_SIGN, u.USER_SYS_YN, u.USER_CREATE,
+                u.USER_ADDR1, u.USER_ADDR2, u.USER_ZIP,
+                e.DEPT_NO, d.DEPT_NM,
+                e.POSITION_NO, p.POSITION_NM,
+                e.EMP_MANAGER,
+            FROM TEAM3_202407F.TB_USER u
+            LEFT JOIN TEAM3_202407F.EMPLOYEE e ON u.USER_NO = e.USER_NO
+            LEFT JOIN TEAM3_202407F.DEPT d ON e.DEPT_NO = d.DEPT_NO
+            LEFT JOIN TEAM3_202407F.POSITION p ON e.POSITION_NO = p.POSITION_NO
+            WHERE 1=1
+            AND USER_CODE IN (1,3)
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    UPPER(u.USER_NO) LIKE '%' || UPPER(#{keyword}) || '%' OR
+                    UPPER(u.USER_NM) LIKE '%' || UPPER(#{keyword}) || '%' OR
+                    u.USER_PHONE LIKE '%' || #{keyword} || '%'
+                )
+            </if>
+            <if test="deptNo != null and deptNo != ''">
+                AND e.DEPT_NO = #{deptNo}
+            </if>
+            <if test="positionNo != null and positionNo != ''">
+                AND e.POSITION_NO = #{positionNo}
+            </if>
+        ) a
+    ) b
+    WHERE rnum BETWEEN (#{page} - 1) * #{size} + 1 
+    AND #{page} * #{size}
+</select>
+
+    <!-- 전체 사용자 수 조회 -->
+    <select id="getTotalUsers" parameterType="map" resultType="int">
+        SELECT COUNT(DISTINCT u.USER_NO)
+        FROM TEAM3_202407F.TB_USER u
+        LEFT JOIN TEAM3_202407F.EMPLOYEE e ON u.USER_NO = e.USER_NO
+        LEFT JOIN TEAM3_202407F.DEPT d ON e.DEPT_NO = d.DEPT_NO
+        LEFT JOIN TEAM3_202407F.POSITION p ON e.POSITION_NO = p.POSITION_NO
+        WHERE 1=1
+        <if test="deptNo != null and deptNo != ''">
+            AND e.DEPT_NO = #{deptNo}
+        </if>
+        <if test="positionNo != null and positionNo != ''">
+            AND e.POSITION_NO = #{positionNo}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                UPPER(u.USER_NO) LIKE '%' || UPPER(#{keyword}) || '%' OR
+                UPPER(u.USER_NM) LIKE '%' || UPPER(#{keyword}) || '%' OR
+                u.USER_PHONE LIKE '%' || #{keyword} || '%'
+            )
+        </if>
+    </select>
+
+    <!-- 부서 목록 조회 -->
+    <select id="selectDeptList" resultType="deptVO">
+        SELECT 
+            DEPT_NO,
+            DEPT_NM,
+            AUTH_NO,
+            DEPT_SUPRR
+        FROM TEAM3_202407F.DEPT
+        ORDER BY DEPT_NO
+    </select>
+
+    <!-- 직책 목록 조회 -->
+    <select id="selectPositionList" resultType="positionVO">
+        SELECT 
+            POSITION_NO,
+            POSITION_NM
+        FROM TEAM3_202407F.POSITION
+        ORDER BY POSITION_NO
+    </select>
+
+    <!-- 매장 직원 정보 조회 -->
+    <select id="selectStoreEmpList" parameterType="string" resultType="storeEmpVO">
+        SELECT 
+            USER_NO,
+            STORE_NO,
+            POSITION_NO,
+            STORE_NM
+        FROM TEAM3_202407F.STORE_EMP
+        WHERE USER_NO = #{userNo}
+    </select>
+
+    <!-- 직원 정보 조회 -->
+    <select id="selectEmployeeInfo" parameterType="string" resultType="employeeVO">
+        SELECT 
+            USER_NO,
+            POSITION_NO,
+            EMP_MANAGER,
+            DEPT_NO
+        FROM TEAM3_202407F.EMPLOYEE
+        WHERE USER_NO = #{userNo}
+    </select>
+
+    <!-- 사용자 삭제 -->
+    <delete id="deleteUser" parameterType="java.util.List">
+        DELETE FROM TEAM3_202407F.TB_USER
+        WHERE USER_NO IN
+        <foreach collection="list" item="userNo" open="(" separator="," close=")">
+            #{userNo}
+        </foreach>
+    </delete>
+
+    <!-- 사용자 상세 정보 조회 -->
+    <select id="selectUserDetail" parameterType="string" resultType="tbUserVO">
+        SELECT 
+            u.USER_NO, u.USER_NM, u.USER_MAIL, u.USER_PHONE,
+            u.USER_ADDR1, u.USER_ADDR2, u.USER_ZIP,
+            e.DEPT_NO, d.DEPT_NM,
+            e.POSITION_NO, p.POSITION_NM
+        FROM TEAM3_202407F.TB_USER u
+        LEFT JOIN TEAM3_202407F.EMPLOYEE e ON u.USER_NO = e.USER_NO
+        LEFT JOIN TEAM3_202407F.DEPT d ON e.DEPT_NO = d.DEPT_NO
+        LEFT JOIN TEAM3_202407F.POSITION p ON e.POSITION_NO = p.POSITION_NO
+        WHERE u.USER_NO = #{userNo}
+    </select>
+
+    <!-- 사용자 등록 -->
+    <insert id="insertUser" parameterType="tbUserVO">
+        INSERT INTO TEAM3_202407F.TB_USER (
+            USER_NO, USER_NM, USER_MAIL, USER_PHONE,
+            USER_ADDR1, USER_ADDR2, USER_ZIP
+        ) VALUES (
+            #{userNo}, #{userNm}, #{userMail}, #{userPhone},
+            #{userAddr1}, #{userAddr2}, #{userZip}
+        )
+    </insert>
+
+    <!-- 직원 정보 등록 -->
+    <insert id="insertEmployee" parameterType="employeeVO">
+        INSERT INTO TEAM3_202407F.EMPLOYEE (
+            USER_NO, DEPT_NO, POSITION_NO
+        ) VALUES (
+            #{userNo}, #{deptNo}, #{positionNo}
+        )
+    </insert>
+
+    <!-- 사용자 정보 수정 -->
+    <update id="updateUser" parameterType="tbUserVO">
+        UPDATE TEAM3_202407F.TB_USER
+        SET 
+            USER_NM = #{userNm},
+            USER_MAIL = #{userMail},
+            USER_PHONE = #{userPhone},
+            USER_ADDR1 = #{userAddr1},
+            USER_ADDR2 = #{userAddr2},
+            USER_ZIP = #{userZip}
+        WHERE USER_NO = #{userNo}
+    </update>
+
+    <!-- 직원 정보 수정 -->
+    <update id="updateEmployee" parameterType="employeeVO">
+        UPDATE TEAM3_202407F.EMPLOYEE
+        SET 
+            DEPT_NO = #{deptNo},
+            POSITION_NO = #{positionNo}
+        WHERE USER_NO = #{userNo}
+    </update>
+</mapper>

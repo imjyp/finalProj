@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.commuteSG.mapper.CommuteMapper">
+	<!-- 부서/직책별 출퇴근 기록 조회 {size=10, searchDate=2025-01, page=1, deptNm=경영, status=} -->
+	<!-- 부서/직책별 출퇴근 기록 조회 
+    {size=10, searchDate=2025-01, page=1, deptNm=경영, status=}
+    -->
+    <select id="getAllCommuteList" parameterType="map" resultType="kr.or.ddit.vo.SchdVO">
+        SELECT *
+        FROM (
+            SELECT a.*, ROW_NUMBER() OVER (ORDER BY TO_DATE(a.schdul_date, 'YYYY-MM-DD') DESC, a.attend ASC NULLS FIRST) AS rnum
+            FROM (
+                SELECT 
+                    s.schdul_no,
+                    TO_CHAR(s.schdul_date, 'YYYY-MM-DD') as schdul_date,
+                    s.user_no,
+                    s.attend,
+                    s.leave,
+                    s.working_time,
+                    s.status,
+                    u.user_nm,
+                    d.dept_nm,
+                    p.position_nm
+                FROM schedule s
+                INNER JOIN tb_user u ON s.user_no = u.user_no
+                INNER JOIN employee e ON u.user_no = e.user_no
+                INNER JOIN dept d ON e.dept_no = d.dept_no
+                INNER JOIN position p ON e.position_no = p.position_no
+                WHERE d.dept_nm IS NOT NULL 
+                AND d.dept_state = 1
+                AND p.position_nm IS NOT NULL
+                AND e.dept_no IS NOT NULL 
+                AND e.position_no IS NOT NULL
+                <if test="searchDate != null and searchDate != ''">
+                    AND TO_CHAR(s.schdul_date, 'YYYY-MM') = #{searchDate}
+                </if>
+                <if test="deptNm != null and deptNm != ''">
+                    AND d.dept_nm = #{deptNm}
+                </if>
+                <if test="status != null and status != ''">
+                    AND s.status = #{status}
+                </if>
+            ) a
+        ) b
+        WHERE rnum BETWEEN (#{page} - 1) * #{size} + 1 AND #{page} * #{size}
+    </select>
+	<!-- 월별 통계 -->
+	<select id="getMonthlyStats" parameterType="map" resultType="map">
+        SELECT 
+            d.dept_nm,
+            COUNT(*) as total_records,
+            SUM(CASE WHEN s.status = '정상' THEN 1 ELSE 0 END) as normal_count,
+            SUM(CASE WHEN s.status = '지각' THEN 1 ELSE 0 END) as late_count,
+            SUM(CASE WHEN s.status = '조기퇴근' THEN 1 ELSE 0 END) as early_leave_count,
+            ROUND(AVG(
+                TO_NUMBER(SUBSTR(s.working_time, 1, 2)) + 
+                TO_NUMBER(SUBSTR(s.working_time, 4, 2)) / 60
+            ), 1) as avg_working_hours
+        FROM schedule s
+        INNER JOIN tb_user u ON s.user_no = u.user_no
+        INNER JOIN employee e ON u.user_no = e.user_no
+        INNER JOIN dept d ON e.dept_no = d.dept_no
+        INNER JOIN position p ON e.position_no = p.position_no
+        WHERE d.dept_nm IS NOT NULL 
+        AND d.dept_state = 1
+        AND e.dept_no IS NOT NULL
+        AND e.position_no IS NOT NULL
+        AND p.position_nm IS NOT NULL
+        AND TO_CHAR(s.schdul_date, 'YYYY-MM') = #{searchDate}
+        <if test="deptNm != null and deptNm != ''">
+            AND d.dept_nm = #{deptNm}
+        </if>
+        GROUP BY d.dept_nm
+        ORDER BY d.dept_nm
+    </select>
+	<!-- 부서 목록 조회 -->
+	<select id="getDeptList" resultType="string">
+        SELECT DISTINCT d.dept_nm 
+        FROM dept d
+        WHERE d.dept_nm IS NOT NULL
+        and d.dept_no!=6
+        AND d.dept_state = 1
+        ORDER BY d.dept_nm
+    </select>
+	<!-- 전체 출퇴근 기록 수 조회 -->
+	<select id="getTotalCommuteCount" parameterType="map" resultType="int">
+        SELECT COUNT(*)
+        FROM schedule s
+        INNER JOIN tb_user u ON s.user_no = u.user_no
+        INNER JOIN employee e ON u.user_no = e.user_no
+        INNER JOIN dept d ON e.dept_no = d.dept_no
+        INNER JOIN position p ON e.position_no = p.position_no
+        WHERE d.dept_nm IS NOT NULL 
+        AND d.dept_state = 1
+        AND e.dept_no IS NOT NULL
+        AND e.position_no IS NOT NULL
+        AND p.position_nm IS NOT NULL
+        <if test="searchDate != null and searchDate != ''">
+            AND TO_CHAR(s.schdul_date, 'YYYY-MM') = #{searchDate}
+        </if>
+        <if test="deptNm != null and deptNm != ''">
+            AND d.dept_nm = #{deptNm}
+        </if>
+        <if test="status != null and status != ''">
+            AND s.status = #{status}
+        </if>
+    </select>
+</mapper>

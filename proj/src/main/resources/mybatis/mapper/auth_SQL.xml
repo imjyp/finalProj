@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.auth.jy.mapper.AuthMapper">
+	
+	<select id="listAll" resultType="AuthVO">
+		SELECT AUTH_NO, USER_NO, AUTH_NAME, AUTH_DATE
+		FROM AUTH
+		ORDER BY USER_NO DESC
+	</select>
+	
+	<update id="updateAuth" parameterType="AuthVO">
+		UPDATE AUTH
+		SET AUTH_NO = #{authNo}
+		    , AUTH_NAME = #{authName}
+		    , AUTH_DATE = SYSDATE
+		WHERE USER_NO = #{userNo}
+		AND AUTH_NAME = 'ROLE_PENDING'
+	</update>
+	
+</mapper>

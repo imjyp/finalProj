@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.itemSG.mapper.ItemMapperSG">
+   
+   <sql id="where">
+      <if test="keyword!=null and keyword!=''">
+      AND (
+          UPPER(ITEM_NO) LIKE UPPER('%' || #{keyword} || '%') OR 
+          UPPER(ITEM_NM) LIKE UPPER('%' || #{keyword} || '%') OR
+          UPPER(ITEM_PRICE) LIKE UPPER('%' || #{keyword} || '%') OR
+          UPPER(SALE_PRICE) LIKE UPPER('%' || #{keyword} || '%') 
+          )
+       </if>
+   </sql>
+   
+   <!-- 품목 리스트 -->
+   <select id="itemList" parameterType="hashMap" resultType="kr.or.ddit.vo.ItemVO">
+      SELECT T.*
+      FROM (
+         SELECT ROW_NUMBER() OVER (ORDER BY ITEM_NO) RNUM,
+               ITEM_NO, ITEM_NM, ITEM_PRICE, SALE_PRICE
+         FROM ITEM
+         WHERE ITEM_DEL = 1
+         <include refid="where"></include>
+      ) T
+      WHERE T.RNUM BETWEEN (#{currentPage} * 10) - 9 AND (#{currentPage} * 10)
+      ORDER BY ITEM_NO
+   </select>
+   
+   <!-- 전체 행 개수 -->
+   <select id="getTotal" parameterType="hashMap" resultType="int">
+      SELECT COUNT(*)
+      FROM ITEM
+      WHERE ITEM_DEL = 1
+      <include refid="where"></include>
+   </select>
+   
+   <!-- 품목 상세 조회 -->
+   <select id="detail" parameterType="int" resultType="kr.or.ddit.vo.ItemVO">
+      SELECT ITEM_NO, ITEM_NM, ITEM_PRICE, SALE_PRICE, ITEM_DEL
+      FROM ITEM
+      WHERE ITEM_NO = #{itemNo}
+      AND ITEM_DEL = 1
+   </select>
+   
+   <!-- 품목 등록 -->
+   <insert id="insert" parameterType="kr.or.ddit.vo.ItemVO">
+      INSERT INTO ITEM (
+         ITEM_NO, ITEM_NM, ITEM_PRICE, SALE_PRICE, ITEM_DEL
+      ) VALUES (
+         (SELECT NVL(MAX(ITEM_NO),0)+1 FROM ITEM),
+         #{itemNm}, #{itemPrice}, #{salePrice}, 1
+      )
+   </insert>
+   
+   <!-- 품목 수정 -->
+   <update id="update" parameterType="kr.or.ddit.vo.ItemVO">
+      UPDATE ITEM
+      SET ITEM_NM = #{itemNm},
+         ITEM_PRICE = #{itemPrice},
+         Sale_PRICE = #{salePrice}
+      WHERE ITEM_NO = #{itemNo}
+   </update>
+   
+   <!-- 품목 삭제 (상태 변경) -->
+   <update id="delete" parameterType="int">
+      UPDATE ITEM
+      SET ITEM_DEL = 2
+      WHERE ITEM_NO = #{itemNo}
+      AND ITEM_DEL = 1
+   </update>
+   
+   <!-- selectedItems 쿼리 추가 -->
+   <select id="selectedItems" parameterType="java.util.List" resultType="kr.or.ddit.vo.ItemVO">
+      SELECT ITEM_NO, ITEM_NM, ITEM_PRICE, SALE_PRICE
+      FROM ITEM
+      WHERE ITEM_NO IN
+      <foreach collection="list" item="itemNo" open="(" separator="," close=")">
+         #{itemNo}
+      </foreach>
+      AND ITEM_DEL = 1
+   </select>
+   
+   <!-- 품목 다중 삭제 -->
+   <update id="deleteItems" parameterType="java.util.List">
+      UPDATE ITEM
+      SET ITEM_DEL = 2
+      WHERE ITEM_NO IN
+      <foreach collection="list" item="itemNo" open="(" separator="," close=")">
+         #{itemNo}
+      </foreach>
+      AND ITEM_DEL = 1
+   </update>
+   
+</mapper>

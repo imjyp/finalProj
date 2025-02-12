@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.member.jy.mapper.UserMapper">
+
+	<!-- //기본 로그인을 위한 유저(TB_USER) 및 권한(AUTH) 테이블이 이미 있는제 체크 public int beforeChk(); -->
+	<select id="beforeChk" resultType="int">
+		SELECT COUNT(*)
+		FROM TB_USER U, AUTH A
+		WHERE U.USER_NO = A.USER_NO
+		AND U.USER_NO = #{userNo}
+	</select>
+
+	<!-- email로 사용자 정보를 가져옴 public UsersVO findByEmail(String email) <select 
+		id="findByEmail" parameterType="String" resultType="kr.or.ddit.vo.UsersVO"> 
+		SELECT ID, EMAIL, PASSWORD, CREATED_AT, UPDATED_AT FROM USERS WHERE EMAIL 
+		= #{email} </select> -->
+
+	<!-- 회원가입 요청 -->
+	<insert id="save" parameterType="kr.or.ddit.vo.TBUserVO">
+		INSERT INTO TB_USER (USER_NO, USER_PW, ENABLED, USER_NM, USER_PHONE, USER_PROFILE)
+		VALUES (#{userNo}, #{userPw}, 0, #{userNm}, #{userPhone}, 20250122036)
+	</insert>
+
+	<!-- 회원가입 요청 후 대기 권한 부여 -->
+	<insert id="pending" parameterType="kr.or.ddit.vo.AuthVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="authNo">
+			SELECT NVL(MAX(AUTH_NO),0)+ 1 AS authNo
+			FROM AUTH
+		</selectKey>
+
+		INSERT INTO AUTH (AUTH_NO, USER_NO, AUTH_NAME, AUTH_DATE)
+		VALUES (#{authNo}, #{userNo}, 'ROLE_PENDING', SYSDATE)
+	</insert>
+
+	<!-- 상세정보 입력 -->
+	<update id="details" parameterType="kr.or.ddit.vo.TBUserVO">
+		UPDATE TB_USER
+		SET USER_MAIL = #{userMail}
+			, USER_BIRTH = #{userBirth}
+			, USER_CODE = #{userCode}
+			, USER_INDATE = #{userIndate}
+			, USER_ADDR2 = #{userAddr2}
+			, USER_ADDR1 = #{userAddr1}
+			, USER_ZIP = #{userZip}
+		WHERE USER_NO = #{userNo}
+	</update>
+
+	<!-- 본사 직원 insert -->
+	<insert id="saveEmployee" parameterType="kr.or.ddit.vo.EmployeeVO">
+		INSERT INTO EMPLOYEE (USER_NO, POSITION_NO, EMP_MANAGER, DEPT_NO)
+    	VALUES (#{userNo}, #{positionNo}, #{empManager}, #{deptNo})
+	</insert>
+	
+	<!-- 가맹점 직원 insert -->
+	<insert id="saveStoreEmp" parameterType="kr.or.ddit.vo.StoreEmpVO">
+		INSERT INTO STORE_EMP(USER_NO, STORE_NO, POSITION_NO, STORE_NM)
+		VALUES (#{userNo}, #{storeNo}, #{positionNo}, #{storeNm})
+	</insert>
+	
+	<!-- 아이디 중복 검사 -->
+	<select id="idDupChk" parameterType="kr.or.ddit.vo.TBUserVO"
+		resultType="int">
+		SELECT COUNT(*)
+		FROM TB_USER
+		WHERE USER_NO = #{userNo}
+	</select>
+
+</mapper>

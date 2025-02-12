@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.orgChart.jm.mapper.OrgChartMapper">
+
+<!-- 데이터 list<OrgChartVO> 타입으로 가져오기 -->
+<select id="listOrgChart" resultType="OrgChartVO">
+  SELECT 
+    dept_no AS id, 
+    dept_nm AS name, 
+    dept_suprr AS parent, 
+    LEVEL						<!-- 계층형 레벨 -->
+FROM 
+    dept
+WHERE 
+    dept_state = 1				<!-- 삭제되지 않은 부서만 조회 -->
+START WITH 
+    dept_suprr IS NULL			<!-- 최상위 부서부터 시작 -->
+CONNECT BY 
+    PRIOR dept_no = dept_suprr	<!-- 부모와 자식 부서 관계 연결 -->
+ORDER BY 
+    LEVEL, dept_suprr			<!-- 계층 순으로 정렬 -->
+</select>
+
+<!-- 데이터 계층형 json형식으로 변환하기  -->
+<!-- <select id="selectDeptList" resultType="OrgChartVO"> -->
+<!--     SELECT  -->
+<!--         DEPT_NO AS id,  -->
+<!--         DEPT_NM AS name,  -->
+<!--         DEPT_SUPRR AS parent, -->
+<!--         LEVEL -->
+<!--     FROM DEPT -->
+<!--     WHERE DEPT_STATE = 1 -->
+<!--     START WITH  -->
+<!--     dept_suprr IS NULL -->
+<!--     CONNECT BY PRIOR dept_no = dept_suprr -->
+<!--     ORDER BY DEPT_NO -->
+<!-- </select> -->
+
+
+
+</mapper> 

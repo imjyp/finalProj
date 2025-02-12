@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.budget.jc.mapper.BudgetMapper">
+
+<resultMap type="kr.or.ddit.vo.StoreVO" id="storeMap">
+	<result property="storeNo" column="STORE_NO"/>
+	<result property="storeLat" column="STORE_LAT"/>
+	<result property="storeLot" column="STORE_LOT"/>
+	<result property="storeAddr1" column="STORE_ADDR1"/>
+	<result property="storeZip" column="STORE_ZIP"/>
+	<result property="storeNm" column="STORE_NM"/>
+	<result property="storeAddr2" column="STORE_ADDR2"/>
+	
+	<result property="storeBudgetNo" column="STORE_BUDGET_NO"/>
+	<result property="storeBudget" column="STORE_BUDGET"/>
+	<result property="storeBudgetYear" column="STORE_BUDGET_YEAR"/>
+	<result property="storeBudgetDate" column="STORE_BUDGET_DATE"/>
+	<result property="storeBudgetContent" column="STORE_BUDGET_CONTENT"/>
+	<result property="storeBudgetTy" column="STORE_BUDGET_TY"/>
+	
+</resultMap>
+
+ 	<sql id="where">
+		<if test="year !=null and year !='' ">
+			AND head_budget_year=#{year}
+		</if>
+		<if test="type !=null and type !='' ">
+			AND head_budget_ty = #{type} 
+		</if>
+	</sql> 
+	
+	
+	<select id="ysgrlist" parameterType="hashMap" resultType="HeadBudgetVO">
+			SELECT T.RNUM, T.*
+		FROM
+		(
+			   SELECT ROW_NUMBER() OVER(order by head_budget_date desc) RNUM, h.*,
+			    NVL((SELECT SUM(head_budget) 
+			         FROM head_budget h2 
+			         WHERE h2.head_budget_year = h.head_budget_year AND h2.head_budget_ty = 2), 0) as useTotal,
+			    ((select sum(head_budget) from head_budget  h2 
+			    WHERE h2.head_budget_year = h.head_budget_year and head_budget_ty=1)
+			    -nvl((select sum(head_budget) from head_budget  h2 
+			    WHERE h2.head_budget_year = h.head_budget_year and  head_budget_ty=2 ),0)) as restBG
+			    FROM HEAD_BUDGET H
+			    WHERE 1 = 1
+			    and head_budget_ty=1
+			    and head_budget_code=1
+		) T
+		WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10 - 1) AND
+		(#{currentPage} * 10)  
+		
+	</select>
+	
+	<select id="yearlist" resultType="HeadBudgetVO">
+		select distinct(head_budget_year) from head_budget
+		order by head_budget_year
+	</select>
+	
+	
+	<select id="yearList">
+	select head_budget_year from head_budget
+	group by head_budget_year
+	order by head_budget_year desc
+	</select>
+	
+	
+	<select id="yssylist" parameterType="hashMap" resultType="HeadBudgetVO">
+		SELECT * from(
+		select ROW_NUMBER() OVER(ORDER BY T.head_budget_date desc,dept_budget_no desc) RNUM, T.*
+		from (
+		    SELECT * 
+		    FROM vw_head_budget_with_balance 
+		    where 1=1
+		        <if test="year !=null and year !='' ">
+					AND head_budget_year=#{year}
+				</if>
+				<if test="type !=null and type !='' ">
+					AND head_budget_ty = #{type} 
+				</if>
+					)T
+			) 
+			where  RNUM BETWEEN (#{currentPage} * 10) - (10 - 1) AND (#{currentPage} * 10) 
+
+
+
+	</select>
+	
+	<insert id="insertBudget" parameterType="hashMap">
+		<selectKey resultType="int" order="BEFORE" keyProperty="deptBudgetNo">
+			select nvl(max(dept_budget_no),0)+1 from head_budget
+		</selectKey>
+		insert into head_budget
+		values(#{deptBudgetNo},1,#{headBudget},#{headBudgetYear},sysdate,#{headBudgetContent},1,1)
+	</insert>
+	
+	<update id="updateBudget" parameterType="hashMap">
+		update head_budget
+		set head_budget_year=#{headBudgetYear},
+			head_budget=#{headBudget},
+			head_budget_content=#{headBudgetContent}
+		where dept_budget_no=#{deptBudgetNo}
+	</update>
+	
+	
+	<select id="gmjBgByGMJ" resultType="StoreVO">
+		select * from store_budget
+		where store_no=#{storeNo}
+	</select>
+	
+	<select id="gmjList" resultType="StoreVO">
+		select * from store
+	</select>
+	
+	<select id="getTotal" parameterType="hashMap" resultType="int">
+		select count(*) from head_budget
+		where 1=1
+		<include refid="where"></include> 
+	</select>
+	
+	<select id="getTotalBS">
+		select count(distinct head_budget_year)
+		from head_budget
+	</select>
+	
+	
+	<!-- 가맹점 -->
+	<select id="getBudget2" resultMap="storeMap">
+		select sb.*, s.*
+		from store_budget sb, store s
+		where sb.store_no=s.store_no
+	</select>
+	
+	<select id="getTotal2" parameterType="hashMap" resultType="int">
+		select count(*) from store_budget
+		where 1=1
+		and store_no=#{storeNo}
+		<if test="year !=null and year !='' ">
+			AND STORE_BUDGET_YEAR=#{year}
+		</if>
+		<if test="type !=null and type !='' ">
+			AND STORE_budget_ty = #{type} 
+		</if> 
+	</select>
+	
+	<select id="getTotalGMJ">
+		select count(distinct store_budget_year)
+		from store_budget
+	</select>
+	
+	<select id="ysgrlist2" parameterType="hashMap" resultMap="storeMap">
+	SELECT T.RNUM, T.*, S.store_nm
+	FROM
+	(
+	    SELECT ROW_NUMBER() OVER (ORDER BY store_budget_year, store_budget_date DESC) AS RNUM,
+	     NVL((SELECT SUM(store_budget)
+	                FROM store_budget h2
+	                WHERE h2.store_budget_year = h.store_budget_year
+	                  AND h2.store_budget_ty = 2
+	                  AND h2.store_no = #{storeNo}), 0) AS useTotal,
+	           ( 
+	               (SELECT SUM(store_budget)
+	                FROM store_budget h2
+	                WHERE h2.store_budget_year = h.store_budget_year
+	                  AND h2.store_budget_ty = 1
+	                  AND h2.store_no = #{storeNo})
+	               -
+	               NVL((SELECT SUM(store_budget)
+	                FROM store_budget h2
+	                WHERE h2.store_budget_year = h.store_budget_year
+	                  AND h2.store_budget_ty = 2
+	                  AND h2.store_no = #{storeNo}), 0)) AS restBG,
+	           h.*
+	    FROM store_budget h
+	    WHERE h.store_no = #{storeNo}
+        AND h.store_budget_ty = 1
+	) T
+	JOIN store S ON T.store_no = S.store_no
+	WHERE T.RNUM BETWEEN (#{currentPage} * 10) - (10 - 1) AND (#{currentPage} * 10)
+	</select>
+	
+	
+	<select id="yssylist2" parameterType="hashMap" resultMap="storeMap">
+	
+	select * from(
+		select T.* ,ROW_NUMBER() OVER( ORDER BY T.store_budget_date desc, T.store_budget_no desc) RNUM
+		from (
+			select * from 
+			vw_store_budget_with_balance 
+			where store_no=#{storeNo}
+			<if test="type !=null and type !='' ">
+				and store_budget_ty=#{type} 
+			</if>
+			 <if test="year !=null and year !='' ">
+				AND STORE_BUDGET_YEAR=#{year}
+			</if>)T
+		)
+		where rnum  BETWEEN (#{currentPage} * 10) - (10 - 1) AND (#{currentPage} * 10)
+		
+	
+	</select> 
+	
+	<select id="yearlist2" resultType="StoreVO" parameterType="int">
+		select distinct(store_budget_year) from store_budget
+		where store_no=#{storeNo}
+	</select>
+	
+	
+	<insert id="insertBudget2" parameterType="hashMap">
+		<selectKey resultType="int" order="BEFORE" keyProperty="storeBudgetNo">
+			select nvl(max(store_budget_no),0)+1 from store_budget
+		</selectKey>
+		insert into store_budget
+		values(#{storeBudgetNo},#{storeNo},#{storeBudget},#{storeBudgetYear},sysdate,#{storeBudgetContent},1)
+	</insert>
+	
+	<update id="updateBudget2" parameterType="hashMap">
+		update store_budget
+		set store_budget_year=#{storeBudgetYear},
+			store_budget=#{storeBudget},
+			store_budget_content=#{storeBudgetContent}
+		where store_budget_no=#{storeBudgetNo}
+	</update>
+	
+	<delete id="deleteBudget">
+		<![CDATA[
+		delete from head_budget A
+		where A.dept_budget_no=#{deptBudgetNo}
+		AND   (
+		     SELECT COUNT(*)
+		        FROM   HEAD_BUDGET C
+		        WHERE   C.HEAD_BUDGET_YEAR IN (
+		            SELECT B.HEAD_BUDGET_YEAR
+		            FROM   HEAD_BUDGET B
+		            WHERE  B.DEPT_BUDGET_NO = #{deptBudgetNo})
+		        AND     C.HEAD_BUDGET_TY = 2) < 1
+		]]>
+	</delete>
+	
+	<select id="chkDelete">
+	select count(*) 
+	from head_budget 
+	where head_budget_year=#{headBudgetYear} and head_budget_ty=2
+	</select>
+	
+	
+	<!-- 계산서 발행 후 본사 예산 insert -->
+	<insert id="insertOrderBudget" parameterType="kr.or.ddit.vo.HeadBudgetVO">
+		<selectKey resultType="int" order="BEFORE" keyProperty="deptBudgetNo">
+			SELECT NVL(MAX(DEPT_BUDGET_NO),0)+1 
+			FROM HEAD_BUDGET
+		</selectKey>
+		
+		INSERT INTO HEAD_BUDGET (
+		    DEPT_BUDGET_NO, HEAD_NO, HEAD_BUDGET, HEAD_BUDGET_YEAR, HEAD_BUDGET_DATE
+		    , HEAD_BUDGET_CONTENT, HEAD_BUDGET_TY, HEAD_BUDGET_CODE
+		)
+		    SELECT #{deptBudgetNo}, 1, SO.STORE_ORDER_SUM, EXTRACT(YEAR FROM B.BILL_DATE), B.BILL_DATE
+		        	,B.BILL_TITLE || ' 입금', 1, 2
+		    FROM BILL B
+		    JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		    WHERE  b.BILL_NO = #{billNo}
+	</insert>
+	
+	<!-- 계산서 발행 후 가맹점 예산 insert -->
+	<insert id="insertStoreBudget">
+		<selectKey resultType="int" order="BEFORE" keyProperty="storeBudgetNo">
+			SELECT NVL(MAX(STORE_BUDGET_NO),0)+1 
+			FROM STORE_BUDGET
+		</selectKey>
+		
+		INSERT INTO STORE_BUDGET (
+			STORE_BUDGET_NO, STORE_NO, STORE_BUDGET, STORE_BUDGET_YEAR, STORE_BUDGET_DATE
+			, STORE_BUDGET_CONTENT, STORE_BUDGET_TY
+		)
+		SELECT #{storeBudgetNo}, SO.STORE_NO, SO.STORE_ORDER_SUM, EXTRACT(YEAR FROM B.BILL_DATE), B.BILL_DATE,
+		    B.BILL_TITLE || ' 출금', 2
+		FROM BILL B
+		JOIN STORE_ORDER SO ON B.BILL_NO = SO.BILL_NO
+		WHERE  B.BILL_NO = #{billNo}
+	</insert>
+</mapper>

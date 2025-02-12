@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.mapper.FileGroupMapper">
+	
+	<!-- 
+	public int insertFileGroup(FileGroupVO fileGroupVO)
+	실행전 FileGroupVO(fileGroupNo=0, fileRegdate=null, fileDetailVOList=null)
+	실행후 fileGroupVO{fileGroupNo=20241119001,fileRegdate=null}
+	 -->
+	<insert id="insertFileGroup" parameterType="kr.or.ddit.vo.FileGroupVO">
+		<selectKey resultType="long" order="BEFORE" keyProperty="fileGroupNo">
+			SELECT TO_NUMBER(NVL(MAX(FILE_GROUP_NO),TO_CHAR(SYSDATE,'YYYYMMDD')||'000')+1)
+			FROM   FILE_GROUP
+			WHERE  SUBSTR(FILE_GROUP_NO,1,8) = TO_CHAR(SYSDATE,'YYYYMMDD')
+		</selectKey>
+		
+		INSERT INTO FILE_GROUP(FILE_GROUP_NO, FILE_REGDATE)
+		VALUES(#{fileGroupNo},SYSDATE)
+	</insert>
+	
+	<!-- 
+	FILE_DETAIL 테이블에 insert
+	FileDetailVO(fileSn=1, fileGroupNo=20241119005, fileOriginalName=111.jpg, 
+	fileSaveName=f4139448-65fc-41b3-a4f6-baf719fb0a05_111.jpg, 
+	fileSaveLocate=/resources/upload/2024/11/19/f4139448-65fc-41b3-a4f6-baf719fb0a05_111.jpg, 
+	fileSize=306350, fileExt=jpg, fileMime=image/jpeg, fileFancysize=299.17 KB, 
+	fileSaveDate=null, fileDowncount=0)
+	public int insertFileDetail(FileDetailVO fileDetailVO)
+	 -->
+	<insert id="insertFileDetail" parameterType="kr.or.ddit.vo.FileDetailVO">
+		INSERT INTO FILE_DETAIL(FILE_SN, FILE_GROUP_NO, FILE_ORIGINAL_NAME, FILE_SAVE_NAME, FILE_SAVE_LOCATE
+			, FILE_SIZE, FILE_EXT, FILE_MIME, FILE_FANCYSIZE, FILE_SAVE_DATE
+			, FILE_DOWNCOUNT)
+		VALUES(#{fileSn}, #{fileGroupNo}, #{fileOriginalName}, #{fileSaveName}, #{fileSaveLocate}
+			, #{fileSize}, #{fileExt}, #{fileMime}, #{fileFancysize}, SYSDATE
+			, #{fileDowncount})
+	</insert>
+	
+</mapper>
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.jstree.jw.mapper.JstreeDeptMapper">
+
+	<!-- DEPT(부서) : USER(사원) = 1 : N -->
+	<resultMap type="kr.or.ddit.jstree.jw.vo.JstreeDeptVO" id="jstreeDeptMap">
+		<result property="deptNo" column="DEPT_NO"/>
+		<result property="deptNm" column="DEPT_NM"/>
+		<result property="deptSuprr" column="DEPT_SUPRR"/>
+		<association property="tbUserVOList" resultMap="tbUserMap"></association>
+	</resultMap>
+	
+	<resultMap type="kr.or.ddit.vo.TBUserVO" id="tbUserMap">
+		<result property="userStatus" column="USER_STATUS"/>
+		<result property="userNo" column="USER_NO"/>
+		<result property="userPw" column="USER_PW"/>
+		<result property="enabled" column="ENABLED"/>
+		<result property="userCode" column="USER_CODE"/>
+		<result property="userNm" column="USER_NM"/>
+		<result property="userMail" column="USER_MAIL"/>
+		<result property="userPhone" column="USER_PHONE"/>
+		<result property="userBirth" column="USER_BIRTH"/>
+		<result property="userIndate" column="USER_INDATE"/>
+		<result property="userProfile" column="USER_PROFILE"/>
+		<result property="userSign" column="USER_SIGN"/>
+		<result property="userSysYn" column="USER_SYS_YN"/>
+		<result property="userCreate" column="USER_CREATE"/>
+		<result property="userAddr1" column="USER_ADDR1"/>
+		<result property="userAddr2" column="USER_ADDR2"/>
+		<result property="userZip" column="USER_ZIP"/>
+		<result property="positionNo" column="POSITION_NO"/>
+		<result property="positionNm" column="POSITION_NM"/>
+	</resultMap>
+	
+	<select id="deptTree" resultMap="jstreeDeptMap">
+		SELECT D.DEPT_NO, D.DEPT_NM 
+		      , U.USER_NO , U.USER_NM
+		      , P.POSITION_NO, P.POSITION_NM 
+		FROM TB_USER U, EMPLOYEE E, DEPT D, POSITION P
+		WHERE U.USER_NO = E.USER_NO
+		AND E.POSITION_NO = P.POSITION_NO
+		AND E.DEPT_NO = D.DEPT_NO
+		AND E.POSITION_NO IN ( 1,2,3,4)
+		ORDER BY D.DEPT_NM, P.POSITION_NO
+     </select>
+     
+	<select id="receiveDept" resultType="kr.or.ddit.jstree.jw.vo.JstreeDeptVO">
+		SELECT DEPT_NO, DEPT_NM, DEPT_SUPRR
+		FROM DEPT 
+		WHERE 
+		DEPT_STATE = 1
+     </select>
+</mapper>
